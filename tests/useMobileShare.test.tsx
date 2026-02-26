@@ -1,4 +1,5 @@
 import { renderHook, act, cleanup } from "@testing-library/react";
+import type { Mock } from "vitest";
 import useMobileShare from "../src/hooks/useMobileShare";
 
 // Mock fetch globally to prevent real network requests
@@ -17,8 +18,8 @@ vi.stubGlobal(
 const originalShare = navigator.share;
 const originalCanShare = navigator.canShare;
 
-function patchNavigatorShare(shareImpl?: (...args: any[]) => Promise<void>) {
-  const shareFn = shareImpl ?? vi.fn().mockResolvedValue(undefined);
+function patchNavigatorShare(shareImpl?: Mock): Mock {
+  const shareFn: Mock = shareImpl ?? vi.fn().mockResolvedValue(undefined);
   Object.defineProperty(navigator, "share", {
     value: shareFn,
     writable: true,
