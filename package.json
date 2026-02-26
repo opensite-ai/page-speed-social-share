@@ -1,14 +1,18 @@
 {
   "name": "@page-speed/social-share",
   "version": "0.0.1",
-  "description": "TODO",
+  "description": "Performance-optimized social sharing component with inline, sticky, and combo variants for React applications.",
   "keywords": [
     "react",
-    "icons",
     "social-share",
+    "share",
     "page-speed",
     "tree-shakable",
-    "opensite"
+    "opensite",
+    "twitter",
+    "facebook",
+    "linkedin",
+    "pinterest"
   ],
   "homepage": "https://github.com/opensite-ai/page-speed-social-share#readme",
   "repository": {
@@ -44,6 +48,16 @@
       "types": "./dist/core/index.d.ts",
       "import": "./dist/core/index.js",
       "require": "./dist/core/index.cjs"
+    },
+    "./hooks": {
+      "types": "./dist/hooks/index.d.ts",
+      "import": "./dist/hooks/index.js",
+      "require": "./dist/hooks/index.cjs"
+    },
+    "./types": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/types/index.js",
+      "require": "./dist/types/index.cjs"
     }
   },
   "scripts": {
@@ -58,10 +72,12 @@
     "prepublishOnly": "pnpm run prepublish"
   },
   "peerDependencies": {
+    "@opensite/hooks": ">=2.0.0",
     "react": ">=18.0.0",
     "react-dom": ">=18.0.0"
   },
   "devDependencies": {
+    "@opensite/hooks": "^2.1.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",

@@ -1,1 +1,5 @@
-export type {} from "./social-share";
+export type {
+  SocialShareProps,
+  ShareParams,
+  ShareResult,
+} from "./social-share";

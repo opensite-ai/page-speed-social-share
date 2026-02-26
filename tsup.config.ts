@@ -4,7 +4,7 @@ export default defineConfig({
   entry: {
     index: "src/index.ts",
     "core/index": "src/core/index.ts",
-    "utils/index": "src/utils/index.ts",
+    "hooks/index": "src/hooks/index.ts",
     "types/index": "src/types/index.ts",
   },
   format: ["esm", "cjs"],
@@ -13,5 +13,5 @@ export default defineConfig({
   splitting: false,
   clean: true,
   treeshake: true,
-  external: ["react", "react-dom"],
+  external: ["react", "react-dom", "@opensite/hooks"],
 });

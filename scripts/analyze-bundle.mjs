@@ -5,9 +5,9 @@ import path from "node:path";
 const files = [
   "dist/index.js",
   "dist/index.cjs",
-  "dist/core/Icon.js",
-  "dist/utils/iconUrl.js",
-  "dist/utils/svg.js"
+  "dist/core/index.js",
+  "dist/hooks/index.js",
+  "dist/types/index.js",
 ];
 
 function formatBytes(bytes) {
@@ -28,7 +28,7 @@ for (const relativeFile of files) {
   const gzipped = gzipSync(content);
 
   console.log(
-    `${relativeFile} -> raw ${formatBytes(content.length)}, gzip ${formatBytes(gzipped.length)}`
+    `${relativeFile} -> raw ${formatBytes(content.length)}, gzip ${formatBytes(gzipped.length)}`,
   );
 }
 

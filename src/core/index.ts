@@ -1,1 +1,2 @@
-export { DynamicIcon, Icon } from "./Icon";
+export { SocialShare } from "./social-share";
+export type { SocialShareProps } from "../types";
