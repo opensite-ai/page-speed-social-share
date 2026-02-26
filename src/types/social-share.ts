@@ -12,6 +12,13 @@ export type SocialShareProps = {
    * Defaults to false to preserve existing behavior.
    */
   disableImageAttachments?: boolean;
+  /**
+   * CSS selector for the scroll container that controls sticky-bar visibility.
+   * Useful when the page's scroll container is not the window (e.g. a fixed `<main>` element).
+   * Example: "#os__root", ".my-scroll-wrapper"
+   * When omitted the component falls back to common selectors, then to `window`.
+   */
+  scrollContainerSelector?: string;
 };
 
 export interface ShareParams {

@@ -4,17 +4,14 @@ import { useState, useEffect, useCallback } from "react";
 import type { ShareParams, ShareResult } from "../types";
 
 // Helper: Fetch a URL as a blob via the Rails API proxy.
-// This sends a POST request to your proxy endpoint with credentials.
 const fetchBlob = async (url: string): Promise<Blob> => {
   const proxyUrl = "https://api.dashtrack.com/media_proxy";
 
-  // First check if the URL is from our allowed S3 bucket
   const isAllowedS3Url = url.startsWith(
     "https://toastability-production.s3.amazonaws.com",
   );
 
   try {
-    // Only use the proxy for S3 URLs that match the controller's allowed host
     if (isAllowedS3Url) {
       const response = await fetch(proxyUrl, {
         method: "POST",
@@ -32,7 +29,6 @@ const fetchBlob = async (url: string): Promise<Blob> => {
 
       return response.blob();
     } else {
-      // For non-S3 URLs, try a direct fetch as fallback
       const response = await fetch(url, {
         mode: "no-cors",
         credentials: "same-origin",
@@ -40,7 +36,6 @@ const fetchBlob = async (url: string): Promise<Blob> => {
       return response.blob();
     }
   } catch (error) {
-    // Last resort fallback - try a direct fetch with no special options
     try {
       const response = await fetch(url);
       return response.blob();
@@ -54,9 +49,14 @@ const fetchBlob = async (url: string): Promise<Blob> => {
 const urlToBase64 = async (url: string): Promise<string> => {
   try {
     const blob = await fetchBlob(url);
+
+    // Opaque responses from no-cors produce 0-byte blobs – skip them.
+    if (blob.size === 0) return "";
+
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve("");
       reader.readAsDataURL(blob);
     });
   } catch {
@@ -72,15 +72,19 @@ const dataURLtoFile = (dataurl: string): File | undefined => {
   const mime = arr[0].match(/:(.*?);/)?.[1];
   if (!mime) return undefined;
 
-  const bstr = atob(arr[1]);
-  let n = bstr.length;
-  const u8arr = new Uint8Array(n);
+  try {
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
 
-  while (n--) {
-    u8arr[n] = bstr.charCodeAt(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+
+    return new File([u8arr], "image.jpg", { type: mime });
+  } catch {
+    return undefined;
   }
-
-  return new File([u8arr], "image.jpg", { type: mime });
 };
 
 const useMobileShare = (params: ShareParams): ShareResult => {
@@ -89,27 +93,44 @@ const useMobileShare = (params: ShareParams): ShareResult => {
   const [base64Images, setBase64Images] = useState<string[]>([]);
   const attachmentsEnabled = params.attachImages ?? true;
 
+  // Stable key for imageUrls so the effect only re-runs when the actual
+  // URL values change, not when the parent passes a new array reference.
+  const imageUrlsKey = params.imageUrls?.join(",") ?? "";
+
   // Convert images to base64 if imageUrls are provided
   useEffect(() => {
-    // If attachments are disabled, ensure we clear any previously converted images and skip processing
     if (!attachmentsEnabled) {
       setBase64Images([]);
       return;
     }
 
+    if (!imageUrlsKey) {
+      setBase64Images([]);
+      return;
+    }
+
+    let cancelled = false;
+    const urls = imageUrlsKey.split(",");
+
     const convertImages = async () => {
-      if (params.imageUrls && params.imageUrls.length > 0) {
-        const convertedImages = await Promise.all(
-          params.imageUrls.map((url) => urlToBase64(url)),
-        );
-        setBase64Images(convertedImages.filter(Boolean));
-      } else {
-        setBase64Images([]);
+      try {
+        const converted = await Promise.all(urls.map((u) => urlToBase64(u)));
+        if (!cancelled) {
+          setBase64Images(converted.filter(Boolean));
+        }
+      } catch {
+        if (!cancelled) {
+          setBase64Images([]);
+        }
       }
     };
 
     convertImages();
-  }, [attachmentsEnabled, params.imageUrls]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [attachmentsEnabled, imageUrlsKey]);
 
   // Check if sharing is available
   useEffect(() => {
@@ -122,85 +143,59 @@ const useMobileShare = (params: ShareParams): ShareResult => {
   }, []);
 
   const share = useCallback(async () => {
-    const { url, title, imageUrls } = params;
+    const { url, title } = params;
 
-    // Avoid duplication: either use title for the title and omit text,
-    // or use something different for text than title
-    const shareData: any = { title };
+    const shareData: ShareData = { title };
 
-    // Add URL if available
     if (url) {
       shareData.url = url;
     }
 
-    // Prioritize imageUrls conversion if provided
-    const imagesToShare = attachmentsEnabled
-      ? imageUrls && imageUrls.length > 0
-        ? base64Images
-        : params.images && params.images.length > 0
-          ? params.images
-          : []
-      : [];
-
-    // Files array must be constructed carefully for proper image sharing
     try {
-      if (
-        attachmentsEnabled &&
-        Array.isArray(imagesToShare) &&
-        imagesToShare.length > 0
-      ) {
-        // Ensure images are fully loaded and converted before attempting to share
-        const files = await Promise.all(
-          imagesToShare
-            .map(async (image) => {
+      // Only attempt file attachment when enabled AND we have converted images
+      if (attachmentsEnabled && base64Images.length > 0) {
+        const files = (
+          await Promise.all(
+            base64Images.map(async (image) => {
               try {
-                // If it's already a base64 string
-                if (typeof image === "string" && image.startsWith("data:")) {
+                if (image.startsWith("data:")) {
                   return dataURLtoFile(image);
-                }
-                // If it's a URL that needs to be fetched and converted
-                else if (
-                  typeof image === "string" &&
-                  (image.startsWith("http") || image.startsWith("/"))
-                ) {
-                  const base64 = await urlToBase64(image);
-                  return dataURLtoFile(base64);
                 }
                 return null;
               } catch {
                 return null;
               }
-            })
-            .filter(Boolean),
-        );
+            }),
+          )
+        ).filter(Boolean) as File[];
 
         if (files.length > 0) {
-          shareData.files = files.filter(Boolean);
+          const shareDataWithFiles = { ...shareData, files };
+
+          if (navigator.canShare && navigator.canShare(shareDataWithFiles)) {
+            await navigator.share(shareDataWithFiles);
+            return;
+          }
+          // If canShare rejects files, fall through to share without them
         }
       }
 
-      // Check if the browser/device can share the content with the configured data
+      // Share without files
       if (navigator.canShare && navigator.canShare(shareData)) {
         await navigator.share(shareData);
+      } else if (typeof navigator.share === "function") {
+        // Some browsers don't implement canShare – try share directly
+        await navigator.share(shareData);
       } else {
-        // Try without files if sharing with files is not supported
-        if (shareData.files) {
-          delete shareData.files;
-          if (navigator.canShare && navigator.canShare(shareData)) {
-            await navigator.share(shareData);
-          } else {
-            throw new Error(
-              "Sharing this content is not supported on this device.",
-            );
-          }
-        } else {
-          throw new Error(
-            "Sharing this content is not supported on this device.",
-          );
-        }
+        throw new Error(
+          "Sharing this content is not supported on this device.",
+        );
       }
-    } catch (error: any) {
-      setError(error.message);
+    } catch (err: any) {
+      // AbortError means the user cancelled – not a real error
+      if (err?.name !== "AbortError") {
+        setError(err?.message ?? "Share failed");
+      }
     }
   }, [params, attachmentsEnabled, base64Images]);
 

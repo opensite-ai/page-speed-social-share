@@ -17,14 +17,13 @@ const MAIL_SHARE_URL = "mailto:";
 const ICON_BASE =
   "block m-auto fill-current shrink-0 transition-colors duration-200";
 
-/** Static class strings for sticky variant buttons. */
+/** Static class strings for sticky variant buttons – TW4 standard utilities only. */
 const STICKY_BTN_CLASS =
-  "group relative flex h-[42px] w-[42px] items-center justify-center rounded-full " +
-  "before:content-[''] before:absolute before:inset-0 before:z-[1] before:rounded-full " +
-  "before:bg-muted before:scale-0 before:transition-transform before:duration-200 before:ease-out " +
-  "hover:before:scale-100";
+  "group relative flex size-10 items-center justify-center rounded-full " +
+  "transition-all duration-200 ease-out cursor-pointer " +
+  "hover:bg-primary hover:text-primary-foreground hover:shadow-md";
 
-const STICKY_ICON_CLASS = `${ICON_BASE} relative z-[2] h-[21px] w-[21px] text-muted-foreground group-hover:text-card-foreground`;
+const STICKY_ICON_CLASS = `${ICON_BASE} relative size-5 text-muted-foreground group-hover:text-primary-foreground`;
 
 /** Static class strings for standard inline variant buttons. */
 const INLINE_BTN_CLASS =
@@ -44,15 +43,15 @@ const StickyShareBar: React.FC<{
     social: string,
   ) => void;
   imgUrls?: string[];
-  triggerRef?: React.RefObject<HTMLElement>;
   isTouch?: boolean;
+  scrollContainerSelector?: string;
 }> = ({
   canShare,
   nativeShare,
   handleSocialShare,
   imgUrls,
-  triggerRef,
   isTouch,
+  scrollContainerSelector,
 }) => {
   const [showSharebar, setShowSharebar] = useState<boolean>(false);
   const [hideSharebar, setHideSharebar] = useState<boolean>(false);
@@ -62,7 +61,6 @@ const StickyShareBar: React.FC<{
 
   // Create a portal container when component mounts
   useEffect(() => {
-    // Check if we already have a container
     let container = document.getElementById("sticky-share-portal");
 
     if (!container) {
@@ -73,7 +71,6 @@ const StickyShareBar: React.FC<{
 
     setPortalContainer(container);
 
-    // Clean up on unmount
     return () => {
       if (
         container &&
@@ -95,84 +92,70 @@ const StickyShareBar: React.FC<{
       return;
     }
 
-    // Helper: locate the app's scroll container. In this app the root <main>
-    // element is fixed and owns the scroll (see app.css), so window.scrollY
-    // does not update. We detect and listen to that container when no
-    // explicit triggerRef is provided.
-    const findScrollContainer = () => {
+    // Locate an app-specific scroll container (if any).
+    // When the page uses a fixed <main> with overflow-auto, window.scrollY
+    // stays at 0 and we must read scrollTop from that element instead.
+    const findScrollContainer = (): HTMLElement | null => {
+      // 1. Consumer-supplied selector takes priority
+      if (scrollContainerSelector) {
+        const custom = document.querySelector(
+          scrollContainerSelector,
+        ) as HTMLElement | null;
+        if (custom) return custom;
+      }
+
+      // 2. Common platform selectors
       const el = document.querySelector(
-        "main.dashtrack-light, main.dashtrack-dark",
+        "main.dashtrack-light, main.dashtrack-dark, main#os__root",
       ) as HTMLElement | null;
-      return el || (document.scrollingElement as HTMLElement | null) || null;
+
+      return el || null;
     };
 
-    if (!triggerRef?.current) {
-      const scroller = findScrollContainer();
-      const handleScroll = () => {
-        const scrollY = scroller
-          ? (scroller as HTMLElement).scrollTop
-          : window.scrollY || document.documentElement.scrollTop;
-        setShowSharebar(scrollY > 200);
-      };
+    const scroller = findScrollContainer();
 
-      const target: any = scroller || window;
-      target.addEventListener("scroll", handleScroll, { passive: true });
-      handleScroll();
+    const handleScroll = () => {
+      // Read scroll position from whichever source has a value.
+      // This covers both custom-scroll-container apps and normal window scroll.
+      const containerScroll = scroller ? scroller.scrollTop : 0;
+      const windowScroll = window.scrollY || document.documentElement.scrollTop;
+      const scrollY = Math.max(containerScroll, windowScroll);
+      setShowSharebar(scrollY > 200);
+    };
 
-      return () => {
-        target.removeEventListener("scroll", handleScroll);
-      };
+    // Listen on BOTH the scroll container and window for maximum compatibility.
+    // One of them will fire regardless of how the page is structured.
+    if (scroller) {
+      scroller.addEventListener("scroll", handleScroll, { passive: true });
     }
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
 
-    // Create observer for the trigger element
-    const observerIn = new IntersectionObserver(
-      (entries) => {
-        // When the trigger element moves out of view (scrolled past), show the share bar
-        setShowSharebar(!entries[0].isIntersecting);
-      },
-      {
-        // This threshold makes the share bar appear after scrolling down a bit
-        // Adjust rootMargin to control when the bar appears (e.g., after 100px of scrolling)
-        rootMargin: "-100px 0px 0px 0px",
-        threshold: 0,
-      },
-    );
-
-    observerIn.observe(triggerRef.current);
-
-    // Optional: Detect when the user reaches the bottom of the page
-    const observerFooter = document.querySelector("footer, .footer");
-    if (observerFooter) {
-      const observerOut = new IntersectionObserver(
+    // Optional: hide when footer comes into view
+    const footer = document.querySelector("footer, .footer");
+    let footerObserver: IntersectionObserver | null = null;
+    if (footer) {
+      footerObserver = new IntersectionObserver(
         (entries) => {
           setHideSharebar(entries[0].isIntersecting);
         },
-        {
-          rootMargin: "0px",
-          threshold: 0,
-        },
+        { rootMargin: "0px", threshold: 0 },
       );
-      observerOut.observe(observerFooter);
-
-      return () => {
-        observerIn.disconnect();
-        observerOut.disconnect();
-      };
+      footerObserver.observe(footer);
     }
 
     return () => {
-      observerIn.disconnect();
+      if (scroller) {
+        scroller.removeEventListener("scroll", handleScroll);
+      }
+      window.removeEventListener("scroll", handleScroll);
+      if (footerObserver) footerObserver.disconnect();
     };
-  }, [triggerRef]);
+  }, [scrollContainerSelector]);
 
   // The final class toggling for visibility
   const isActive = showSharebar && !hideSharebar;
 
-  /*********************************************************************
-   * Render methods using the same logic from the main component
-   * On mobile/touch device: only show native button if available
-   * On desktop: always show social icons and optionally include native button
-   *********************************************************************/
   const showOnlyNativeButton = isTouch && canShare;
 
   const renderNativeShareButton = () => (
@@ -289,10 +272,10 @@ const StickyShareBar: React.FC<{
 
   const shareBarContent = (
     <div
-      className={`fixed top-0 right-5 lg:right-8 flex h-full items-center pointer-events-none z-[9999] transition-all duration-300 ease-in-out ${
+      className={`fixed top-0 right-5 lg:right-8 flex h-full items-center pointer-events-none z-40 transition-all duration-300 ease-in-out ${
         isActive
           ? "opacity-100 visible translate-x-0"
-          : "opacity-0 invisible translate-x-[10%]"
+          : "opacity-0 invisible translate-x-4"
       }`}
     >
       <ul className="pointer-events-auto bg-card backdrop-blur-sm rounded-full shadow-lg p-2 border border-border">
@@ -303,14 +286,13 @@ const StickyShareBar: React.FC<{
     </div>
   );
 
-  // Use ReactDOM.createPortal to render outside the component hierarchy
   return portalContainer
     ? ReactDOM.createPortal(shareBarContent, portalContainer)
     : null;
 };
 
 /********************************************************************
- * SocialShare - your main social sharing (non-sticky) or single-button
+ * SocialShare - main component
  ********************************************************************/
 export const SocialShare: React.FC<SocialShareProps> = ({
   containerClassName = "",
@@ -322,79 +304,25 @@ export const SocialShare: React.FC<SocialShareProps> = ({
   variant = "standard",
   inlineSize = 42,
   disableImageAttachments = false,
+  scrollContainerSelector,
 }) => {
-  // Check if we're on a touch device and get the screen type
   const { screenType } = useScreen();
   const { isTouchDevice: isTouch } = useIsTouchDevice();
   const isMobileOrTablet = screenType === "MOBILE" || screenType === "TABLET";
 
   // Setup native share capabilities
-  const { share: originalNativeShare, canShare: originalCanShare } =
-    useMobileShare({
-      title: postTitle,
-      url: shareUrl,
-      imageUrls: imgUrls,
-      attachImages: !disableImageAttachments,
-    });
-
-  // We'll consider images loaded only when they've been actually loaded
-  // rather than just checking if the array exists
-  const [imagesLoaded, setImagesLoaded] = useState(false);
-
-  // Preload images to ensure they're available for sharing
-  useEffect(() => {
-    if (imgUrls && imgUrls.length > 0) {
-      let isMounted = true;
-      const loadImages = async () => {
-        try {
-          // Create image elements to preload the images
-          await Promise.all(
-            imgUrls.map((src) => {
-              return new Promise<string>((resolve) => {
-                const img = new Image();
-                img.onload = () => resolve(src);
-                img.onerror = () => {
-                  // Even if it fails to load for display, we'll still try to include it for sharing
-                  // since the proxy will handle it separately
-                  resolve(src);
-                };
-                img.src = src;
-              });
-            }),
-          );
-
-          if (isMounted) {
-            setImagesLoaded(true);
-          }
-        } catch (error) {
-          if (isMounted) {
-            // Even if some images fail, use the ones that succeeded
-            setImagesLoaded(true);
-          }
-        }
-      };
-
-      loadImages();
-      return () => {
-        isMounted = false;
-      };
-    } else {
-      setImagesLoaded(true);
-    }
-  }, [imgUrls]);
-
-  // Images are ready when they are loaded and the Native Share API is available
-  const canShare = originalCanShare && imagesLoaded;
+  const { share: originalNativeShare, canShare } = useMobileShare({
+    title: postTitle,
+    url: shareUrl,
+    imageUrls: imgUrls,
+    attachImages: !disableImageAttachments,
+  });
 
   // Determine what to render based on device and capabilities
-  // On mobile/tablet with touch, only show native share if available
-  // On desktop, always show social buttons and optionally include native share at the end
   const showOnlyNativeButton = isTouch && isMobileOrTablet && canShare;
 
-  // Adjust the share handler to work with the native share API
   const handleNativeShare = useCallback(() => {
     if (!canShare) return;
-
     try {
       originalNativeShare();
     } catch (error) {
@@ -402,83 +330,53 @@ export const SocialShare: React.FC<SocialShareProps> = ({
     }
   }, [canShare, originalNativeShare]);
 
-  // Define the getSocialUrl function first
   const getSocialUrl = useCallback(
     (social: string) => {
-      let baseUrl = "";
-
-      switch (social) {
-        case "x":
-          baseUrl = X_SHARE_URL;
-          break;
-        case "facebook":
-          baseUrl = FACEBOOK_SHARE_URL;
-          break;
-        case "pinterest":
-          baseUrl = PINTEREST_SHARE_URL;
-          break;
-        case "linkedin":
-          baseUrl = LINKEDIN_SHARE_URL;
-          break;
-        case "mail":
-          baseUrl = MAIL_SHARE_URL;
-          break;
-      }
-
-      if (!baseUrl) return "#";
-
-      // Handle each sharing platform with direct URL construction
       switch (social) {
         case "x": {
-          // For Twitter/X: Only include title and URL
-          let twitterUrl = `${baseUrl}?text=${encodeURIComponent(postTitle)}`;
-
+          let url = `${X_SHARE_URL}?text=${encodeURIComponent(postTitle)}`;
           if (shareUrl) {
-            twitterUrl += `&url=${encodeURIComponent(shareUrl)}`;
+            url += `&url=${encodeURIComponent(shareUrl)}`;
           }
-
           const formattedHashtags = hashtags
             .map((tag) => tag.replace(/\s+/g, ""))
             .join(",");
           if (formattedHashtags) {
-            twitterUrl += `&hashtags=${encodeURIComponent(formattedHashtags)}`;
+            url += `&hashtags=${encodeURIComponent(formattedHashtags)}`;
           }
-
-          return twitterUrl;
+          return url;
         }
 
-        case "facebook": {
-          // For Facebook: Use the modern approach with only the URL parameter
-          // For better compatibility, use the direct encodeURIComponent URL without any other parameters
-          return `${baseUrl}?u=${encodeURIComponent(shareUrl)}`;
-        }
+        case "facebook":
+          // Facebook reads title/description from the page's OG tags.
+          // The sharer only accepts the u parameter.
+          return `${FACEBOOK_SHARE_URL}?u=${encodeURIComponent(shareUrl)}`;
 
-        case "linkedin": {
-          // LinkedIn reads title/description from the page's Open Graph tags.
+        case "linkedin":
+          // LinkedIn reads title/description from the page's OG tags.
           // The /sharing/share-offsite/ endpoint only accepts the url parameter.
-          return `${baseUrl}?url=${encodeURIComponent(shareUrl)}`;
-        }
+          return `${LINKEDIN_SHARE_URL}?url=${encodeURIComponent(shareUrl)}`;
 
         case "pinterest": {
-          // For Pinterest: URL, media, and description
-          let pinterestUrl = `${baseUrl}?url=${encodeURIComponent(shareUrl)}`;
-
+          let url = `${PINTEREST_SHARE_URL}?url=${encodeURIComponent(shareUrl)}`;
           if (imgUrls && imgUrls.length > 0) {
-            pinterestUrl += `&media=${encodeURIComponent(imgUrls[0])}`;
+            url += `&media=${encodeURIComponent(imgUrls[0])}`;
           }
-
-          pinterestUrl += `&description=${encodeURIComponent(postTitle)}`;
-
-          return pinterestUrl;
+          // Pinterest supports a description parameter
+          const desc = summaryContent
+            ? `${postTitle} - ${summaryContent}`
+            : postTitle;
+          url += `&description=${encodeURIComponent(desc)}`;
+          return url;
         }
 
         case "mail": {
-          // For Email: Set subject as postTitle, and format the body properly
           const subject = encodeURIComponent(postTitle);
-          const bodyContent = `Check out this article:\n\n${summaryContent}\n\n${shareUrl}`;
+          const bodyContent = summaryContent
+            ? `${summaryContent}\n\n${shareUrl}`
+            : shareUrl;
           const body = encodeURIComponent(bodyContent);
-          // For mailto: the format is "mailto:?subject=...&body=..."
-          return `${baseUrl}?subject=${subject}&body=${body}`;
+          return `${MAIL_SHARE_URL}?subject=${subject}&body=${body}`;
         }
 
         default:
@@ -488,7 +386,6 @@ export const SocialShare: React.FC<SocialShareProps> = ({
     [postTitle, summaryContent, shareUrl, imgUrls, hashtags],
   );
 
-  // Handle social sharing through URL schemes
   const handleSocialShare = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>, social: string) => {
       event.preventDefault();
@@ -496,7 +393,11 @@ export const SocialShare: React.FC<SocialShareProps> = ({
       if (url === "#") return;
 
       if (social === "mail") {
-        window.location.href = url;
+        // Use a temporary anchor element for mailto: links.
+        // This is more reliable across browsers than window.location.href.
+        const a = document.createElement("a");
+        a.href = url;
+        a.click();
       } else {
         window.open(url, `${social}-share-dialog`, "width=626,height=436");
       }
@@ -515,7 +416,6 @@ export const SocialShare: React.FC<SocialShareProps> = ({
       className={`${INLINE_BTN_CLASS} mx-auto`}
       style={{ width: inlineSize, height: inlineSize }}
       onClick={handleNativeShare}
-      disabled={!imagesLoaded}
     >
       <svg
         className={INLINE_ICON_CLASS}
@@ -531,7 +431,6 @@ export const SocialShare: React.FC<SocialShareProps> = ({
     </button>
   );
 
-  // Update the standard social buttons rendering to include native share button at the end for desktop
   const renderSocialButtons = () => (
     <ul className="flex flex-wrap gap-2 lg:gap-3 justify-center">
       {/* X (formerly Twitter) */}
@@ -635,7 +534,6 @@ export const SocialShare: React.FC<SocialShareProps> = ({
             className={INLINE_BTN_CLASS}
             style={{ width: inlineSize, height: inlineSize }}
             onClick={handleNativeShare}
-            disabled={!imagesLoaded}
           >
             <svg
               className={INLINE_ICON_CLASS}
@@ -673,6 +571,7 @@ export const SocialShare: React.FC<SocialShareProps> = ({
           handleSocialShare={handleSocialShare}
           imgUrls={imgUrls}
           isTouch={isTouch}
+          scrollContainerSelector={scrollContainerSelector}
         />
       )}
     </>

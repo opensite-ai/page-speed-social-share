@@ -32,7 +32,9 @@ beforeAll(() => {
     disconnect() {}
   }
   (globalThis as any).IntersectionObserver = FakeIO;
-  (globalThis as any).IntersectionObserverEntry = { prototype: { intersectionRatio: 0 } };
+  (globalThis as any).IntersectionObserverEntry = {
+    prototype: { intersectionRatio: 0 },
+  };
 });
 
 // Clean up any portal containers between tests
@@ -72,12 +74,17 @@ describe("SocialShare", () => {
     it("does not render Pinterest button when imgUrls is empty", () => {
       render(<SocialShare {...defaultProps} />);
 
-      expect(screen.queryByLabelText("Share on Pinterest")).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Share on Pinterest"),
+      ).not.toBeInTheDocument();
     });
 
     it("renders Pinterest button when imgUrls are provided", () => {
       render(
-        <SocialShare {...defaultProps} imgUrls={["https://example.com/img.jpg"]} />,
+        <SocialShare
+          {...defaultProps}
+          imgUrls={["https://example.com/img.jpg"]}
+        />,
       );
 
       expect(screen.getByLabelText("Share on Pinterest")).toBeInTheDocument();
@@ -130,7 +137,9 @@ describe("SocialShare", () => {
       // Inline section exists
       expect(container.querySelector("section")).toBeInTheDocument();
       // Portal container exists
-      expect(document.getElementById("sticky-share-portal")).toBeInTheDocument();
+      expect(
+        document.getElementById("sticky-share-portal"),
+      ).toBeInTheDocument();
     });
   });
 
@@ -148,7 +157,9 @@ describe("SocialShare", () => {
       const calledUrl = openSpy.mock.calls[0][0] as string;
       expect(calledUrl).toContain("twitter.com/intent/tweet");
       expect(calledUrl).toContain(encodeURIComponent("Test Title"));
-      expect(calledUrl).toContain(encodeURIComponent("https://example.com/test"));
+      expect(calledUrl).toContain(
+        encodeURIComponent("https://example.com/test"),
+      );
 
       openSpy.mockRestore();
     });
@@ -156,9 +167,7 @@ describe("SocialShare", () => {
     it("includes hashtags in the X share URL", () => {
       const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
 
-      render(
-        <SocialShare {...defaultProps} hashtags={["react", "webdev"]} />,
-      );
+      render(<SocialShare {...defaultProps} hashtags={["react", "webdev"]} />);
 
       fireEvent.click(screen.getByLabelText("Share on X"));
       const calledUrl = openSpy.mock.calls[0][0] as string;
@@ -167,35 +176,41 @@ describe("SocialShare", () => {
       openSpy.mockRestore();
     });
 
-    it("uses mailto: for email sharing", () => {
-      // jsdom doesn't navigate on location.href assignment, so just spy on it
-      const hrefSetter = vi.fn();
-      Object.defineProperty(window, "location", {
-        value: { ...window.location, href: "" },
-        writable: true,
-        configurable: true,
-      });
+    it("uses mailto: for email sharing via anchor click", () => {
+      // Spy on anchor element creation to capture the href
+      const clickSpy = vi.fn();
+      const origCreateElement = document.createElement.bind(document);
+      let capturedHref = "";
 
-      const originalDescriptor = Object.getOwnPropertyDescriptor(window.location, "href");
-      Object.defineProperty(window.location, "href", {
-        set: hrefSetter,
-        get: () => "",
-        configurable: true,
+      vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
+        const el = origCreateElement(tag);
+        if (tag === "a") {
+          el.click = clickSpy;
+          // Capture href when it's set
+          const originalSetAttribute = el.setAttribute.bind(el);
+          Object.defineProperty(el, "href", {
+            set(val: string) {
+              capturedHref = val;
+              originalSetAttribute("href", val);
+            },
+            get() {
+              return capturedHref;
+            },
+            configurable: true,
+          });
+        }
+        return el;
       });
 
       render(<SocialShare {...defaultProps} />);
       fireEvent.click(screen.getByLabelText("Share via Email"));
 
-      expect(hrefSetter).toHaveBeenCalledTimes(1);
-      const mailUrl = hrefSetter.mock.calls[0][0] as string;
-      expect(mailUrl).toContain("mailto:");
-      expect(mailUrl).toContain("subject=");
-      expect(mailUrl).toContain("body=");
+      expect(clickSpy).toHaveBeenCalledTimes(1);
+      expect(capturedHref).toContain("mailto:");
+      expect(capturedHref).toContain("subject=");
+      expect(capturedHref).toContain("body=");
 
-      // Restore
-      if (originalDescriptor) {
-        Object.defineProperty(window.location, "href", originalDescriptor);
-      }
+      vi.restoreAllMocks();
     });
 
     it("builds correct Facebook share URL", () => {
@@ -206,7 +221,9 @@ describe("SocialShare", () => {
 
       const calledUrl = openSpy.mock.calls[0][0] as string;
       expect(calledUrl).toContain("facebook.com/sharer.php");
-      expect(calledUrl).toContain(`u=${encodeURIComponent("https://example.com/test")}`);
+      expect(calledUrl).toContain(
+        `u=${encodeURIComponent("https://example.com/test")}`,
+      );
 
       openSpy.mockRestore();
     });
@@ -219,7 +236,9 @@ describe("SocialShare", () => {
 
       const calledUrl = openSpy.mock.calls[0][0] as string;
       expect(calledUrl).toContain("linkedin.com/sharing/share-offsite");
-      expect(calledUrl).toContain(`url=${encodeURIComponent("https://example.com/test")}`);
+      expect(calledUrl).toContain(
+        `url=${encodeURIComponent("https://example.com/test")}`,
+      );
       // Should NOT contain deprecated title/summary params
       expect(calledUrl).not.toContain("title=");
       expect(calledUrl).not.toContain("summary=");
@@ -237,7 +256,10 @@ describe("SocialShare", () => {
       const calledUrl = openSpy.mock.calls[0][0] as string;
       expect(calledUrl).toContain("pinterest.com/pin/create/button");
       expect(calledUrl).toContain(`media=${encodeURIComponent(imgUrl)}`);
-      expect(calledUrl).toContain(`description=${encodeURIComponent("Test Title")}`);
+      // Pinterest description now includes summaryContent
+      expect(calledUrl).toContain("description=");
+      expect(calledUrl).toContain(encodeURIComponent("Test Title"));
+      expect(calledUrl).toContain(encodeURIComponent("A short summary."));
 
       openSpy.mockRestore();
     });
@@ -249,12 +271,15 @@ describe("SocialShare", () => {
     it("does not render native share button when canShare is false", () => {
       render(<SocialShare {...defaultProps} />);
 
-      expect(screen.queryByLabelText("Share with System")).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Share with System"),
+      ).not.toBeInTheDocument();
       expect(screen.queryByLabelText("Share")).not.toBeInTheDocument();
     });
 
     it("renders native share button on desktop when canShare is true", async () => {
-      const { default: useMobileShare } = await import("../src/hooks/useMobileShare");
+      const { default: useMobileShare } =
+        await import("../src/hooks/useMobileShare");
       (useMobileShare as ReturnType<typeof vi.fn>).mockReturnValue({
         share: mockShare,
         canShare: true,
