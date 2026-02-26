@@ -1,0 +1,82 @@
+{
+  "name": "@page-speed/social-share",
+  "version": "0.0.1",
+  "description": "TODO",
+  "keywords": [
+    "react",
+    "icons",
+    "social-share",
+    "page-speed",
+    "tree-shakable",
+    "opensite"
+  ],
+  "homepage": "https://github.com/opensite-ai/page-speed-social-share#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/opensite-ai/page-speed-social-share.git"
+  },
+  "bugs": {
+    "url": "https://github.com/opensite-ai/page-speed-social-share/issues"
+  },
+  "author": "OpenSite AI (https://opensite.ai)",
+  "license": "MIT",
+  "private": false,
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./core": {
+      "types": "./dist/core/index.d.ts",
+      "import": "./dist/core/index.js",
+      "require": "./dist/core/index.cjs"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest",
+    "test:ci": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "type-check": "tsc --noEmit",
+    "bundle-analysis": "node scripts/analyze-bundle.mjs",
+    "prepublish": "pnpm run build && pnpm run type-check && pnpm run test:ci",
+    "prepublishOnly": "pnpm run prepublish"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@types/node": "^24.10.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitest/coverage-v8": "^4.0.10",
+    "jsdom": "^27.2.0",
+    "tsup": "^8.5.1",
+    "typescript": "^5.7.2",
+    "vitest": "^4.0.10"
+  },
+  "packageManager": "pnpm@10.24.0",
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}
