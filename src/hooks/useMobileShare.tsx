@@ -3,6 +3,20 @@
 import { useState, useEffect, useCallback } from "react";
 import type { ShareParams, ShareResult } from "../types";
 
+// Debug logging helper - only logs when DEBUG_SOCIAL_SHARE is true
+const DEBUG =
+  typeof process !== "undefined" && process.env?.NODE_ENV === "development";
+
+const log = (
+  category: string,
+  action: string,
+  data?: Record<string, unknown>,
+) => {
+  if (DEBUG) {
+    console.log(`[SocialShare:${category}] ${action}`, data ?? "");
+  }
+};
+
 // Helper: Fetch a URL as a blob via the Rails API proxy.
 const fetchBlob = async (url: string): Promise<Blob> => {
   const proxyUrl = "https://api.dashtrack.com/media_proxy";
@@ -11,8 +25,11 @@ const fetchBlob = async (url: string): Promise<Blob> => {
     "https://toastability-production.s3.amazonaws.com",
   );
 
+  log("fetchBlob", "Starting fetch", { url, isAllowedS3Url });
+
   try {
     if (isAllowedS3Url) {
+      log("fetchBlob", "Using proxy for S3 URL", { proxyUrl });
       const response = await fetch(proxyUrl, {
         method: "POST",
         headers: {
@@ -24,22 +41,38 @@ const fetchBlob = async (url: string): Promise<Blob> => {
       });
 
       if (!response.ok) {
+        log("fetchBlob", "Proxy fetch failed", { status: response.status });
         throw new Error(`Failed to fetch ${url}`);
       }
 
-      return response.blob();
+      const blob = response.blob();
+      log("fetchBlob", "Proxy fetch successful", { size: (await blob).size });
+      return blob;
     } else {
+      log("fetchBlob", "Fetching directly (no proxy)", { url });
       const response = await fetch(url, {
         mode: "no-cors",
         credentials: "same-origin",
       });
-      return response.blob();
+      const blob = response.blob();
+      log("fetchBlob", "Direct fetch complete", { size: (await blob).size });
+      return blob;
     }
   } catch (error) {
+    log("fetchBlob", "Primary fetch failed, trying fallback", {
+      error: String(error),
+    });
     try {
       const response = await fetch(url);
-      return response.blob();
-    } catch {
+      const blob = response.blob();
+      log("fetchBlob", "Fallback fetch successful", {
+        size: (await blob).size,
+      });
+      return blob;
+    } catch (fallbackError) {
+      log("fetchBlob", "All fetch attempts failed", {
+        error: String(fallbackError),
+      });
       throw error;
     }
   }
@@ -47,30 +80,54 @@ const fetchBlob = async (url: string): Promise<Blob> => {
 
 /** Convert a remote image URL to a base64 data URL via the proxy. */
 const urlToBase64 = async (url: string): Promise<string> => {
+  log("urlToBase64", "Converting URL to base64", { url });
   try {
     const blob = await fetchBlob(url);
 
     // Opaque responses from no-cors produce 0-byte blobs – skip them.
-    if (blob.size === 0) return "";
+    if (blob.size === 0) {
+      log("urlToBase64", "Got empty blob, skipping", { url });
+      return "";
+    }
 
     return new Promise((resolve) => {
       const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = () => resolve("");
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        log("urlToBase64", "Conversion successful", {
+          url,
+          resultLength: result?.length ?? 0,
+          preview: result?.substring(0, 50) + "...",
+        });
+        resolve(result);
+      };
+      reader.onerror = () => {
+        log("urlToBase64", "FileReader error", { url });
+        resolve("");
+      };
       reader.readAsDataURL(blob);
     });
-  } catch {
+  } catch (error) {
+    log("urlToBase64", "Conversion failed", { url, error: String(error) });
     return "";
   }
 };
 
 /** Convert a base64 data URL string into a File object. */
 const dataURLtoFile = (dataurl: string): File | undefined => {
-  if (!dataurl) return undefined;
+  if (!dataurl) {
+    log("dataURLtoFile", "No data URL provided");
+    return undefined;
+  }
 
   const arr = dataurl.split(",");
   const mime = arr[0].match(/:(.*?);/)?.[1];
-  if (!mime) return undefined;
+  if (!mime) {
+    log("dataURLtoFile", "Could not extract MIME type", {
+      dataurlPreview: dataurl.substring(0, 50),
+    });
+    return undefined;
+  }
 
   try {
     const bstr = atob(arr[1]);
@@ -81,8 +138,14 @@ const dataURLtoFile = (dataurl: string): File | undefined => {
       u8arr[n] = bstr.charCodeAt(n);
     }
 
-    return new File([u8arr], "image.jpg", { type: mime });
-  } catch {
+    const file = new File([u8arr], "image.jpg", { type: mime });
+    log("dataURLtoFile", "File created successfully", {
+      size: file.size,
+      type: mime,
+    });
+    return file;
+  } catch (error) {
+    log("dataURLtoFile", "Failed to create file", { error: String(error) });
     return undefined;
   }
 };
@@ -93,18 +156,36 @@ const useMobileShare = (params: ShareParams): ShareResult => {
   const [base64Images, setBase64Images] = useState<string[]>([]);
   const attachmentsEnabled = params.attachImages ?? true;
 
+  log("useMobileShare", "Hook initialized", {
+    title: params.title,
+    text: params.text?.substring(0, 50) + "...",
+    url: params.url,
+    imageCount: params.imageUrls?.length ?? 0,
+    attachmentsEnabled,
+  });
+
   // Stable key for imageUrls so the effect only re-runs when the actual
   // URL values change, not when the parent passes a new array reference.
   const imageUrlsKey = params.imageUrls?.join(",") ?? "";
 
   // Convert images to base64 if imageUrls are provided
   useEffect(() => {
+    log("useMobileShare", "Image conversion effect running", {
+      attachmentsEnabled,
+      imageUrlsKey: imageUrlsKey?.substring(0, 100) + "...",
+    });
+
     if (!attachmentsEnabled) {
+      log(
+        "useMobileShare",
+        "Image attachments disabled, clearing base64Images",
+      );
       setBase64Images([]);
       return;
     }
 
     if (!imageUrlsKey) {
+      log("useMobileShare", "No image URLs provided, clearing base64Images");
       setBase64Images([]);
       return;
     }
@@ -113,13 +194,24 @@ const useMobileShare = (params: ShareParams): ShareResult => {
     const urls = imageUrlsKey.split(",");
 
     const convertImages = async () => {
+      log("useMobileShare", "Starting image conversion", {
+        urlCount: urls.length,
+      });
       try {
         const converted = await Promise.all(urls.map((u) => urlToBase64(u)));
         if (!cancelled) {
-          setBase64Images(converted.filter(Boolean));
+          const validImages = converted.filter(Boolean);
+          log("useMobileShare", "Image conversion complete", {
+            requested: urls.length,
+            successful: validImages.length,
+          });
+          setBase64Images(validImages);
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
+          log("useMobileShare", "Image conversion failed", {
+            error: String(error),
+          });
           setBase64Images([]);
         }
       }
@@ -129,31 +221,63 @@ const useMobileShare = (params: ShareParams): ShareResult => {
 
     return () => {
       cancelled = true;
+      log("useMobileShare", "Image conversion effect cleaned up");
     };
   }, [attachmentsEnabled, imageUrlsKey]);
 
   // Check if sharing is available
   useEffect(() => {
-    if (
+    const hasShare =
       typeof navigator !== "undefined" &&
-      typeof (navigator as any).share === "function"
-    ) {
+      typeof (navigator as any).share === "function";
+
+    log("useMobileShare", "Checking share availability", {
+      hasNavigator: typeof navigator !== "undefined",
+      hasShareFunction: hasShare,
+    });
+
+    if (hasShare) {
       setCanShare(true);
+      log("useMobileShare", "Native share is available");
     }
   }, []);
 
   const share = useCallback(async () => {
-    const { url, title } = params;
+    const { url, title, text } = params;
 
-    const shareData: ShareData = { title };
+    log("useMobileShare", "share() called", {
+      title,
+      text: text?.substring(0, 50) + "...",
+      url,
+      base64ImageCount: base64Images.length,
+      attachmentsEnabled,
+    });
+
+    // Build share data with text as the primary content
+    const shareData: ShareData = {
+      title,
+      // CRITICAL: 'text' is the main share content for most apps
+      // This was missing before, causing only the URL to be shared
+      text: text || title,
+    };
 
     if (url) {
       shareData.url = url;
     }
 
+    log("useMobileShare", "Built shareData", {
+      title: shareData.title,
+      text: shareData.text?.substring(0, 100) + "...",
+      url: shareData.url,
+    });
+
     try {
       // Only attempt file attachment when enabled AND we have converted images
       if (attachmentsEnabled && base64Images.length > 0) {
+        log("useMobileShare", "Attempting to attach images", {
+          count: base64Images.length,
+        });
+
         const files = (
           await Promise.all(
             base64Images.map(async (image) => {
@@ -169,35 +293,71 @@ const useMobileShare = (params: ShareParams): ShareResult => {
           )
         ).filter(Boolean) as File[];
 
+        log("useMobileShare", "Files prepared", {
+          fileCount: files.length,
+          sizes: files.map((f) => f.size),
+        });
+
         if (files.length > 0) {
           const shareDataWithFiles = { ...shareData, files };
 
-          if (navigator.canShare && navigator.canShare(shareDataWithFiles)) {
+          const canShareFiles =
+            navigator.canShare && navigator.canShare(shareDataWithFiles);
+          log("useMobileShare", "Checking if can share with files", {
+            canShareFiles,
+          });
+
+          if (canShareFiles) {
+            log("useMobileShare", "Sharing with files attached");
             await navigator.share(shareDataWithFiles);
             return;
           }
           // If canShare rejects files, fall through to share without them
+          log(
+            "useMobileShare",
+            "Cannot share with files, falling back to share without files",
+          );
         }
       }
 
       // Share without files
-      if (navigator.canShare && navigator.canShare(shareData)) {
+      const canShareBasic = navigator.canShare && navigator.canShare(shareData);
+      log("useMobileShare", "Checking if can share basic", { canShareBasic });
+
+      if (canShareBasic) {
+        log("useMobileShare", "Calling navigator.share with basic data");
         await navigator.share(shareData);
+        log("useMobileShare", "Share completed successfully");
       } else if (typeof navigator.share === "function") {
         // Some browsers don't implement canShare – try share directly
+        log("useMobileShare", "Trying share directly (no canShare available)");
         await navigator.share(shareData);
+        log("useMobileShare", "Share completed successfully");
       } else {
+        log("useMobileShare", "Share not supported on this device");
         throw new Error(
           "Sharing this content is not supported on this device.",
         );
       }
     } catch (err: any) {
       // AbortError means the user cancelled – not a real error
-      if (err?.name !== "AbortError") {
-        setError(err?.message ?? "Share failed");
+      if (err?.name === "AbortError") {
+        log("useMobileShare", "Share was cancelled by user");
+        return;
       }
+
+      log("useMobileShare", "Share failed with error", {
+        name: err?.name,
+        message: err?.message,
+      });
+      setError(err?.message ?? "Share failed");
     }
   }, [params, attachmentsEnabled, base64Images]);
+
+  log("useMobileShare", "Returning hook result", {
+    canShare,
+    hasError: !!error,
+  });
 
   return { share, error, canShare };
 };

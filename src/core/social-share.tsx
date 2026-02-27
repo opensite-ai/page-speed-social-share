@@ -13,6 +13,20 @@ const PINTEREST_SHARE_URL = "https://pinterest.com/pin/create/button";
 const LINKEDIN_SHARE_URL = "https://www.linkedin.com/sharing/share-offsite/";
 const MAIL_SHARE_URL = "mailto:";
 
+// Debug logging helper - only logs when in development
+const DEBUG =
+  typeof process !== "undefined" && process.env?.NODE_ENV === "development";
+
+const log = (
+  category: string,
+  action: string,
+  data?: Record<string, unknown>,
+) => {
+  if (DEBUG) {
+    console.log(`[SocialShare:${category}] ${action}`, data ?? "");
+  }
+};
+
 /** Shared icon SVG class names used for both standard and sticky variants. */
 const ICON_BASE =
   "block m-auto fill-current shrink-0 transition-colors duration-200";
@@ -306,13 +320,34 @@ export const SocialShare: React.FC<SocialShareProps> = ({
   disableImageAttachments = false,
   scrollContainerSelector,
 }) => {
+  log("SocialShare", "Component rendering", {
+    variant,
+    postTitle,
+    shareUrl,
+    summaryContent: summaryContent?.substring(0, 50) + "...",
+    imgUrls: imgUrls?.length ?? 0,
+    hashtags,
+    disableImageAttachments,
+  });
+
   const { screenType } = useScreen();
   const { isTouchDevice: isTouch } = useIsTouchDevice();
   const isMobileOrTablet = screenType === "MOBILE" || screenType === "TABLET";
 
+  // Build the share text from title and summary
+  // This is the main content that will be shared to native share targets
+  const shareText = summaryContent
+    ? `${postTitle}\n\n${summaryContent}`
+    : postTitle;
+
+  log("SocialShare", "Built share text", {
+    shareText: shareText.substring(0, 100) + "...",
+  });
+
   // Setup native share capabilities
   const { share: originalNativeShare, canShare } = useMobileShare({
     title: postTitle,
+    text: shareText,
     url: shareUrl,
     imageUrls: imgUrls,
     attachImages: !disableImageAttachments,
@@ -322,16 +357,32 @@ export const SocialShare: React.FC<SocialShareProps> = ({
   const showOnlyNativeButton = isTouch && isMobileOrTablet && canShare;
 
   const handleNativeShare = useCallback(() => {
-    if (!canShare) return;
+    log("handleNativeShare", "Native share triggered", { canShare });
+
+    if (!canShare) {
+      log("handleNativeShare", "Cannot share - canShare is false");
+      return;
+    }
+
     try {
+      log("handleNativeShare", "Calling originalNativeShare()");
       originalNativeShare();
     } catch (error) {
+      log("handleNativeShare", "Native share error", { error: String(error) });
       console.error("Error sharing content:", error);
     }
   }, [canShare, originalNativeShare]);
 
   const getSocialUrl = useCallback(
     (social: string) => {
+      log("getSocialUrl", `Building URL for ${social}`, {
+        postTitle,
+        shareUrl,
+        summaryContent: summaryContent?.substring(0, 50) + "...",
+        hashtags,
+        hasImages: !!(imgUrls && imgUrls.length > 0),
+      });
+
       switch (social) {
         case "x": {
           let url = `${X_SHARE_URL}?text=${encodeURIComponent(postTitle)}`;
@@ -344,18 +395,37 @@ export const SocialShare: React.FC<SocialShareProps> = ({
           if (formattedHashtags) {
             url += `&hashtags=${encodeURIComponent(formattedHashtags)}`;
           }
+          log("getSocialUrl", "X/Twitter URL built", {
+            url: url.substring(0, 150) + "...",
+          });
           return url;
         }
 
-        case "facebook":
-          // Facebook reads title/description from the page's OG tags.
-          // The sharer only accepts the u parameter.
-          return `${FACEBOOK_SHARE_URL}?u=${encodeURIComponent(shareUrl)}`;
+        case "facebook": {
+          // Facebook's sharer.php supports a 'quote' parameter for share text
+          // Note: The quote parameter only works on mobile Facebook apps and some desktop scenarios
+          // For best results, ensure the shared page has proper Open Graph meta tags
+          let url = `${FACEBOOK_SHARE_URL}?u=${encodeURIComponent(shareUrl)}`;
+          if (summaryContent || postTitle) {
+            const quote = summaryContent
+              ? `${postTitle}: ${summaryContent}`
+              : postTitle;
+            url += `&quote=${encodeURIComponent(quote)}`;
+          }
+          log("getSocialUrl", "Facebook URL built", {
+            url: url.substring(0, 150) + "...",
+          });
+          return url;
+        }
 
-        case "linkedin":
-          // LinkedIn reads title/description from the page's OG tags.
-          // The /sharing/share-offsite/ endpoint only accepts the url parameter.
-          return `${LINKEDIN_SHARE_URL}?url=${encodeURIComponent(shareUrl)}`;
+        case "linkedin": {
+          // LinkedIn's share-offsite endpoint only accepts URL
+          // Title/description come from the page's Open Graph tags
+          // Note: For custom text, LinkedIn would require their Share Article API with OAuth
+          const url = `${LINKEDIN_SHARE_URL}?url=${encodeURIComponent(shareUrl)}`;
+          log("getSocialUrl", "LinkedIn URL built", { url });
+          return url;
+        }
 
         case "pinterest": {
           let url = `${PINTEREST_SHARE_URL}?url=${encodeURIComponent(shareUrl)}`;
@@ -367,19 +437,39 @@ export const SocialShare: React.FC<SocialShareProps> = ({
             ? `${postTitle} - ${summaryContent}`
             : postTitle;
           url += `&description=${encodeURIComponent(desc)}`;
+          log("getSocialUrl", "Pinterest URL built", {
+            url: url.substring(0, 150) + "...",
+          });
           return url;
         }
 
         case "mail": {
           const subject = encodeURIComponent(postTitle);
-          const bodyContent = summaryContent
-            ? `${summaryContent}\n\n${shareUrl}`
-            : shareUrl;
+          // Build body with title, summary, and URL
+          let bodyContent = "";
+          if (postTitle) {
+            bodyContent = postTitle;
+          }
+          if (summaryContent) {
+            bodyContent += bodyContent
+              ? `\n\n${summaryContent}`
+              : summaryContent;
+          }
+          if (shareUrl) {
+            bodyContent += bodyContent ? `\n\n${shareUrl}` : shareUrl;
+          }
           const body = encodeURIComponent(bodyContent);
-          return `${MAIL_SHARE_URL}?subject=${subject}&body=${body}`;
+          const mailtoUrl = `${MAIL_SHARE_URL}?subject=${subject}&body=${body}`;
+          log("getSocialUrl", "Mail URL built", {
+            subject,
+            bodyPreview: bodyContent.substring(0, 100) + "...",
+            mailtoUrl: mailtoUrl.substring(0, 150) + "...",
+          });
+          return mailtoUrl;
         }
 
         default:
+          log("getSocialUrl", `Unknown social platform: ${social}`);
           return "#";
       }
     },
@@ -389,17 +479,62 @@ export const SocialShare: React.FC<SocialShareProps> = ({
   const handleSocialShare = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>, social: string) => {
       event.preventDefault();
+      log("handleSocialShare", `Handling share for ${social}`);
+
       const url = getSocialUrl(social);
-      if (url === "#") return;
+      if (url === "#") {
+        log("handleSocialShare", `Invalid URL for ${social}, aborting`);
+        return;
+      }
+
+      log("handleSocialShare", `Opening share dialog for ${social}`, {
+        urlPreview: url.substring(0, 100) + "...",
+      });
 
       if (social === "mail") {
-        // Use a temporary anchor element for mailto: links.
-        // This is more reliable across browsers than window.location.href.
-        const a = document.createElement("a");
-        a.href = url;
-        a.click();
+        // For mailto: links, use window.location.href for maximum compatibility
+        // The anchor element approach can be unreliable in some browsers
+        try {
+          log(
+            "handleSocialShare",
+            "Opening mail client via window.location.href",
+          );
+          window.location.href = url;
+        } catch (error) {
+          // Fallback: create and click a temporary anchor element
+          log(
+            "handleSocialShare",
+            "window.location failed, trying anchor fallback",
+            {
+              error: String(error),
+            },
+          );
+          const a = document.createElement("a");
+          a.href = url;
+          a.style.display = "none";
+          document.body.appendChild(a);
+          a.click();
+          // Clean up after a short delay
+          setTimeout(() => {
+            document.body.removeChild(a);
+          }, 100);
+        }
       } else {
-        window.open(url, `${social}-share-dialog`, "width=626,height=436");
+        // For social platforms, open in a popup window
+        const popupFeatures =
+          "width=626,height=436,scrollbars=yes,resizable=yes";
+        const popup = window.open(url, `${social}-share-dialog`, popupFeatures);
+
+        if (popup) {
+          log("handleSocialShare", `Popup opened successfully for ${social}`);
+        } else {
+          log(
+            "handleSocialShare",
+            `Popup blocked for ${social}, trying window.open without features`,
+          );
+          // If popup was blocked, try opening in a new tab
+          window.open(url, "_blank");
+        }
       }
     },
     [getSocialUrl],

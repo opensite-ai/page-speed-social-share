@@ -24,6 +24,8 @@ export type SocialShareProps = {
 export interface ShareParams {
   url?: string;
   title: string;
+  /** The text content to share - this is the main message body for native share */
+  text?: string;
   imageUrls?: string[];
   images?: string[];
   /**
