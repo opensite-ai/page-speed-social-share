@@ -8,9 +8,9 @@ import { useScreen } from "@opensite/hooks/useScreen";
 import type { SocialShareProps } from "../types";
 
 const X_SHARE_URL = "https://twitter.com/intent/tweet";
-const FACEBOOK_SHARE_URL = "https://www.facebook.com/sharer.php";
+const FACEBOOK_SHARE_URL = "https://www.facebook.com/sharer/sharer.php";
 const PINTEREST_SHARE_URL = "https://pinterest.com/pin/create/button";
-const LINKEDIN_SHARE_URL = "https://www.linkedin.com/sharing/share-offsite/";
+const LINKEDIN_SHARE_URL = "https://www.linkedin.com/shareArticle";
 const MAIL_SHARE_URL = "mailto:";
 
 // Debug logging helper - only logs when in development
@@ -67,243 +67,242 @@ const StickyShareBar: React.FC<{
   isTouch,
   scrollContainerSelector,
 }) => {
-  const [showSharebar, setShowSharebar] = useState<boolean>(false);
-  const [hideSharebar, setHideSharebar] = useState<boolean>(false);
-  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(
-    null,
-  );
+    const [showSharebar, setShowSharebar] = useState<boolean>(false);
+    const [hideSharebar, setHideSharebar] = useState<boolean>(false);
+    const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(
+      null,
+    );
 
-  // Create a portal container when component mounts
-  useEffect(() => {
-    let container = document.getElementById("sticky-share-portal");
+    // Create a portal container when component mounts
+    useEffect(() => {
+      let container = document.getElementById("sticky-share-portal");
 
-    if (!container) {
-      container = document.createElement("div");
-      container.id = "sticky-share-portal";
-      document.body.appendChild(container);
-    }
+      if (!container) {
+        container = document.createElement("div");
+        container.id = "sticky-share-portal";
+        document.body.appendChild(container);
+      }
 
-    setPortalContainer(container);
+      setPortalContainer(container);
 
-    return () => {
+      return () => {
+        if (
+          container &&
+          container.parentNode &&
+          !document.getElementById("sticky-share-portal-persistent")
+        ) {
+          container.parentNode.removeChild(container);
+        }
+      };
+    }, []);
+
+    useEffect(() => {
       if (
-        container &&
-        container.parentNode &&
-        !document.getElementById("sticky-share-portal-persistent")
+        !("IntersectionObserver" in window) ||
+        !("IntersectionObserverEntry" in window) ||
+        !("intersectionRatio" in window.IntersectionObserverEntry.prototype)
       ) {
-        container.parentNode.removeChild(container);
+        setShowSharebar(true);
+        return;
       }
-    };
-  }, []);
 
-  useEffect(() => {
-    if (
-      !("IntersectionObserver" in window) ||
-      !("IntersectionObserverEntry" in window) ||
-      !("intersectionRatio" in window.IntersectionObserverEntry.prototype)
-    ) {
-      setShowSharebar(true);
-      return;
-    }
+      // Locate an app-specific scroll container (if any).
+      // When the page uses a fixed <main> with overflow-auto, window.scrollY
+      // stays at 0 and we must read scrollTop from that element instead.
+      const findScrollContainer = (): HTMLElement | null => {
+        // 1. Consumer-supplied selector takes priority
+        if (scrollContainerSelector) {
+          const custom = document.querySelector(
+            scrollContainerSelector,
+          ) as HTMLElement | null;
+          if (custom) return custom;
+        }
 
-    // Locate an app-specific scroll container (if any).
-    // When the page uses a fixed <main> with overflow-auto, window.scrollY
-    // stays at 0 and we must read scrollTop from that element instead.
-    const findScrollContainer = (): HTMLElement | null => {
-      // 1. Consumer-supplied selector takes priority
-      if (scrollContainerSelector) {
-        const custom = document.querySelector(
-          scrollContainerSelector,
+        // 2. Common platform selectors
+        const el = document.querySelector(
+          "main.dashtrack-light, main.dashtrack-dark, main#os__root",
         ) as HTMLElement | null;
-        if (custom) return custom;
-      }
 
-      // 2. Common platform selectors
-      const el = document.querySelector(
-        "main.dashtrack-light, main.dashtrack-dark, main#os__root",
-      ) as HTMLElement | null;
+        return el || null;
+      };
 
-      return el || null;
-    };
+      const scroller = findScrollContainer();
 
-    const scroller = findScrollContainer();
+      const handleScroll = () => {
+        // Read scroll position from whichever source has a value.
+        // This covers both custom-scroll-container apps and normal window scroll.
+        const containerScroll = scroller ? scroller.scrollTop : 0;
+        const windowScroll = window.scrollY || document.documentElement.scrollTop;
+        const scrollY = Math.max(containerScroll, windowScroll);
+        setShowSharebar(scrollY > 200);
+      };
 
-    const handleScroll = () => {
-      // Read scroll position from whichever source has a value.
-      // This covers both custom-scroll-container apps and normal window scroll.
-      const containerScroll = scroller ? scroller.scrollTop : 0;
-      const windowScroll = window.scrollY || document.documentElement.scrollTop;
-      const scrollY = Math.max(containerScroll, windowScroll);
-      setShowSharebar(scrollY > 200);
-    };
-
-    // Listen on BOTH the scroll container and window for maximum compatibility.
-    // One of them will fire regardless of how the page is structured.
-    if (scroller) {
-      scroller.addEventListener("scroll", handleScroll, { passive: true });
-    }
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll();
-
-    // Optional: hide when footer comes into view
-    const footer = document.querySelector("footer, .footer");
-    let footerObserver: IntersectionObserver | null = null;
-    if (footer) {
-      footerObserver = new IntersectionObserver(
-        (entries) => {
-          setHideSharebar(entries[0].isIntersecting);
-        },
-        { rootMargin: "0px", threshold: 0 },
-      );
-      footerObserver.observe(footer);
-    }
-
-    return () => {
+      // Listen on BOTH the scroll container and window for maximum compatibility.
+      // One of them will fire regardless of how the page is structured.
       if (scroller) {
-        scroller.removeEventListener("scroll", handleScroll);
+        scroller.addEventListener("scroll", handleScroll, { passive: true });
       }
-      window.removeEventListener("scroll", handleScroll);
-      if (footerObserver) footerObserver.disconnect();
-    };
-  }, [scrollContainerSelector]);
+      window.addEventListener("scroll", handleScroll, { passive: true });
+      handleScroll();
 
-  // The final class toggling for visibility
-  const isActive = showSharebar && !hideSharebar;
+      // Optional: hide when footer comes into view
+      const footer = document.querySelector("footer, .footer");
+      let footerObserver: IntersectionObserver | null = null;
+      if (footer) {
+        footerObserver = new IntersectionObserver(
+          (entries) => {
+            setHideSharebar(entries[0].isIntersecting);
+          },
+          { rootMargin: "0px", threshold: 0 },
+        );
+        footerObserver.observe(footer);
+      }
 
-  const showOnlyNativeButton = isTouch && canShare;
+      return () => {
+        if (scroller) {
+          scroller.removeEventListener("scroll", handleScroll);
+        }
+        window.removeEventListener("scroll", handleScroll);
+        if (footerObserver) footerObserver.disconnect();
+      };
+    }, [scrollContainerSelector]);
 
-  const renderNativeShareButton = () => (
-    <li>
-      <button
-        type="button"
-        aria-label="Share"
-        className={STICKY_BTN_CLASS}
-        onClick={nativeShare}
-      >
-        <svg
-          className={STICKY_ICON_CLASS}
-          viewBox="0 0 24 24"
-          fill="currentColor"
+    // The final class toggling for visibility
+    const isActive = showSharebar && !hideSharebar;
+
+    const showOnlyNativeButton = isTouch && canShare;
+
+    const renderNativeShareButton = () => (
+      <li>
+        <button
+          type="button"
+          aria-label="Share"
+          className={STICKY_BTN_CLASS}
+          onClick={nativeShare}
         >
-          <path d="M18 16.08C17.24 16.08 16.56 16.37 16.04 16.85L8.91 12.7C8.96 12.47 9 12.24 9 12C9 11.76 8.96 11.53 8.91 11.3L15.96 7.22C16.5 7.69 17.21 8 18 8C19.66 8 21 6.66 21 5C21 3.34 19.66 2 18 2C16.34 2 15 3.34 15 5C15 5.24 15.04 5.47 15.09 5.7L8.04 9.78C7.5 9.31 6.79 9 6 9C4.34 9 3 10.34 3 12C3 13.66 4.34 15 6 15C6.79 15 7.5 14.69 8.04 14.22L15.16 18.35C15.11 18.56 15.08 18.78 15.08 19C15.08 20.66 16.42 22 18.08 22C19.74 22 21.08 20.66 21.08 19C21.08 17.34 19.74 16 18.08 16H18V16.08Z" />
-        </svg>
-      </button>
-    </li>
-  );
+          <svg
+            className={STICKY_ICON_CLASS}
+            viewBox="0 0 24 24"
+            fill="currentColor"
+          >
+            <path d="M18 16.08C17.24 16.08 16.56 16.37 16.04 16.85L8.91 12.7C8.96 12.47 9 12.24 9 12C9 11.76 8.96 11.53 8.91 11.3L15.96 7.22C16.5 7.69 17.21 8 18 8C19.66 8 21 6.66 21 5C21 3.34 19.66 2 18 2C16.34 2 15 3.34 15 5C15 5.24 15.04 5.47 15.09 5.7L8.04 9.78C7.5 9.31 6.79 9 6 9C4.34 9 3 10.34 3 12C3 13.66 4.34 15 6 15C6.79 15 7.5 14.69 8.04 14.22L15.16 18.35C15.11 18.56 15.08 18.78 15.08 19C15.08 20.66 16.42 22 18.08 22C19.74 22 21.08 20.66 21.08 19C21.08 17.34 19.74 16 18.08 16H18V16.08Z" />
+          </svg>
+        </button>
+      </li>
+    );
 
-  const renderSocialButtons = () => {
-    return (
-      <>
-        {/* X/Twitter */}
-        <li>
-          <button
-            type="button"
-            aria-label="Share on X"
-            className={STICKY_BTN_CLASS}
-            onClick={(e) => handleSocialShare(e, "x")}
-          >
-            <svg className={STICKY_ICON_CLASS} viewBox="0 0 24 24">
-              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-            </svg>
-          </button>
-        </li>
-        {/* Facebook */}
-        <li>
-          <button
-            type="button"
-            aria-label="Share on Facebook"
-            className={STICKY_BTN_CLASS}
-            onClick={(e) => handleSocialShare(e, "facebook")}
-          >
-            <svg className={STICKY_ICON_CLASS} viewBox="0 0 32 32">
-              <path d="M32,16A16,16,0,1,0,13.5,31.806V20.625H9.438V16H13.5V12.475c0-4.01,2.389-6.225,6.043-6.225a24.644,24.644,0,0,1,3.582.312V10.5H21.107A2.312,2.312,0,0,0,18.5,13v3h4.438l-.71,4.625H18.5V31.806A16,16,0,0,0,32,16Z" />
-            </svg>
-          </button>
-        </li>
-        {/* Pinterest (only if we have an image) */}
-        {imgUrls && imgUrls.length > 0 && (
+    const renderSocialButtons = () => {
+      return (
+        <>
+          {/* X/Twitter */}
           <li>
             <button
               type="button"
-              aria-label="Share on Pinterest"
+              aria-label="Share on X"
               className={STICKY_BTN_CLASS}
-              onClick={(e) => handleSocialShare(e, "pinterest")}
+              onClick={(e) => handleSocialShare(e, "x")}
+            >
+              <svg className={STICKY_ICON_CLASS} viewBox="0 0 24 24">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+              </svg>
+            </button>
+          </li>
+          {/* Facebook */}
+          <li>
+            <button
+              type="button"
+              aria-label="Share on Facebook"
+              className={STICKY_BTN_CLASS}
+              onClick={(e) => handleSocialShare(e, "facebook")}
             >
               <svg className={STICKY_ICON_CLASS} viewBox="0 0 32 32">
-                <path d="M16,0C7.2,0,0,7.2,0,16c0,6.8,4.2,12.6,10.2,14.9c-0.1-1.3-0.3-3.2,0.1-4.6c0.3-1.2,1.9-8,1.9-8 s-0.5-1-0.5-2.4c0-2.2,1.3-3.9,2.9-3.9c1.4,0,2,1,2,2.3c0,1.4-0.9,3.4-1.3,5.3c-0.4,1.6,0.8,2.9,2.4,2.9c2.8,0,5-3,5-7.3 c0-3.8-2.8-6.5-6.7-6.5c-4.6,0-7.2,3.4-7.2,6.9c0,1.4,0.5,2.8,1.2,3.7c0.1,0.2,0.1,0.3,0.1,0.5c-0.1,0.5-0.4,1.6-0.4,1.8 C9.5,21.9,9.3,22,9,21.8c-2-0.9-3.2-3.9-3.2-6.2c0-5,3.7-9.7,10.6-9.7c5.6,0,9.9,4,9.9,9.2c0,5.5-3.5,10-8.3,10 c-1.6,0-3.1-0.8-3.7-1.8c0,0-0.8,3.1-1,3.8c-0.4,1.4-1.3,3.1-2,4.2c1.5,0.5,3.1,0.7,4.7,0.7c8.8,0,16-7.2,16-16C32,7.2,24.8,0,16,0z " />
+                <path d="M32,16A16,16,0,1,0,13.5,31.806V20.625H9.438V16H13.5V12.475c0-4.01,2.389-6.225,6.043-6.225a24.644,24.644,0,0,1,3.582.312V10.5H21.107A2.312,2.312,0,0,0,18.5,13v3h4.438l-.71,4.625H18.5V31.806A16,16,0,0,0,32,16Z" />
               </svg>
             </button>
           </li>
-        )}
-        {/* LinkedIn */}
-        <li>
-          <button
-            type="button"
-            aria-label="Share on LinkedIn"
-            className={STICKY_BTN_CLASS}
-            onClick={(e) => handleSocialShare(e, "linkedin")}
-          >
-            <svg className={STICKY_ICON_CLASS} viewBox="0 0 32 32">
-              <path d="M29,1H3A2,2,0,0,0,1,3V29a2,2,0,0,0,2,2H29a2,2,0,0,0,2-2V3A2,2,0,0,0,29,1ZM9.887,26.594H5.374V12.25H9.887ZM7.63,10.281a2.625,2.625,0,1,1,2.633-2.625A2.624,2.624,0,0,1,7.63,10.281ZM26.621,26.594H22.2V19.656c0-1.687,0-3.75-2.35-3.75s-2.633,1.782-2.633,3.656v7.126H12.8V12.25h4.136v1.969h.094a4.7,4.7,0,0,1,4.231-2.344c4.513,0,5.359,3,5.359,6.844Z" />
-            </svg>
-          </button>
-        </li>
-        {/* Email */}
-        <li>
-          <button
-            type="button"
-            aria-label="Share via Email"
-            className={STICKY_BTN_CLASS}
-            onClick={(e) => handleSocialShare(e, "mail")}
-          >
-            <svg className={STICKY_ICON_CLASS} viewBox="0 0 32 32">
-              <path d="M28,3H4A3.957,3.957,0,0,0,0,7V25a3.957,3.957,0,0,0,4,4H28a3.957,3.957,0,0,0,4-4V7A3.957,3.957,0,0,0,28,3Zm.6,6.8-12,9a1,1,0,0,1-1.2,0l-12-9A1,1,0,0,1,4.6,8.2L16,16.75,27.4,8.2a1,1,0,1,1,1.2,1.6Z" />
-            </svg>
-          </button>
-        </li>
-        {/* Add native share button on desktop only if available */}
-        {canShare && !isTouch && (
+          {/* Pinterest (only if we have an image) */}
+          {imgUrls && imgUrls.length > 0 && (
+            <li>
+              <button
+                type="button"
+                aria-label="Share on Pinterest"
+                className={STICKY_BTN_CLASS}
+                onClick={(e) => handleSocialShare(e, "pinterest")}
+              >
+                <svg className={STICKY_ICON_CLASS} viewBox="0 0 32 32">
+                  <path d="M16,0C7.2,0,0,7.2,0,16c0,6.8,4.2,12.6,10.2,14.9c-0.1-1.3-0.3-3.2,0.1-4.6c0.3-1.2,1.9-8,1.9-8 s-0.5-1-0.5-2.4c0-2.2,1.3-3.9,2.9-3.9c1.4,0,2,1,2,2.3c0,1.4-0.9,3.4-1.3,5.3c-0.4,1.6,0.8,2.9,2.4,2.9c2.8,0,5-3,5-7.3 c0-3.8-2.8-6.5-6.7-6.5c-4.6,0-7.2,3.4-7.2,6.9c0,1.4,0.5,2.8,1.2,3.7c0.1,0.2,0.1,0.3,0.1,0.5c-0.1,0.5-0.4,1.6-0.4,1.8 C9.5,21.9,9.3,22,9,21.8c-2-0.9-3.2-3.9-3.2-6.2c0-5,3.7-9.7,10.6-9.7c5.6,0,9.9,4,9.9,9.2c0,5.5-3.5,10-8.3,10 c-1.6,0-3.1-0.8-3.7-1.8c0,0-0.8,3.1-1,3.8c-0.4,1.4-1.3,3.1-2,4.2c1.5,0.5,3.1,0.7,4.7,0.7c8.8,0,16-7.2,16-16C32,7.2,24.8,0,16,0z " />
+                </svg>
+              </button>
+            </li>
+          )}
+          {/* LinkedIn */}
           <li>
             <button
               type="button"
-              aria-label="Share with System"
+              aria-label="Share on LinkedIn"
               className={STICKY_BTN_CLASS}
-              onClick={nativeShare}
+              onClick={(e) => handleSocialShare(e, "linkedin")}
             >
-              <svg
-                className={STICKY_ICON_CLASS}
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path d="M18 16.08C17.24 16.08 16.56 16.37 16.04 16.85L8.91 12.7C8.96 12.47 9 12.24 9 12C9 11.76 8.96 11.53 8.91 11.3L15.96 7.22C16.5 7.69 17.21 8 18 8C19.66 8 21 6.66 21 5C21 3.34 19.66 2 18 2C16.34 2 15 3.34 15 5C15 5.24 15.04 5.47 15.09 5.7L8.04 9.78C7.5 9.31 6.79 9 6 9C4.34 9 3 10.34 3 12C3 13.66 4.34 15 6 15C6.79 15 7.5 14.69 8.04 14.22L15.16 18.35C15.11 18.56 15.08 18.78 15.08 19C15.08 20.66 16.42 22 18.08 22C19.74 22 21.08 20.66 21.08 19C21.08 17.34 19.74 16 18.08 16H18V16.08Z" />
+              <svg className={STICKY_ICON_CLASS} viewBox="0 0 32 32">
+                <path d="M29,1H3A2,2,0,0,0,1,3V29a2,2,0,0,0,2,2H29a2,2,0,0,0,2-2V3A2,2,0,0,0,29,1ZM9.887,26.594H5.374V12.25H9.887ZM7.63,10.281a2.625,2.625,0,1,1,2.633-2.625A2.624,2.624,0,0,1,7.63,10.281ZM26.621,26.594H22.2V19.656c0-1.687,0-3.75-2.35-3.75s-2.633,1.782-2.633,3.656v7.126H12.8V12.25h4.136v1.969h.094a4.7,4.7,0,0,1,4.231-2.344c4.513,0,5.359,3,5.359,6.844Z" />
               </svg>
             </button>
           </li>
-        )}
-      </>
+          {/* Email */}
+          <li>
+            <button
+              type="button"
+              aria-label="Share via Email"
+              className={STICKY_BTN_CLASS}
+              onClick={(e) => handleSocialShare(e, "mail")}
+            >
+              <svg className={STICKY_ICON_CLASS} viewBox="0 0 32 32">
+                <path d="M28,3H4A3.957,3.957,0,0,0,0,7V25a3.957,3.957,0,0,0,4,4H28a3.957,3.957,0,0,0,4-4V7A3.957,3.957,0,0,0,28,3Zm.6,6.8-12,9a1,1,0,0,1-1.2,0l-12-9A1,1,0,0,1,4.6,8.2L16,16.75,27.4,8.2a1,1,0,1,1,1.2,1.6Z" />
+              </svg>
+            </button>
+          </li>
+          {/* Add native share button on desktop only if available */}
+          {canShare && !isTouch && (
+            <li>
+              <button
+                type="button"
+                aria-label="Share with System"
+                className={STICKY_BTN_CLASS}
+                onClick={nativeShare}
+              >
+                <svg
+                  className={STICKY_ICON_CLASS}
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path d="M18 16.08C17.24 16.08 16.56 16.37 16.04 16.85L8.91 12.7C8.96 12.47 9 12.24 9 12C9 11.76 8.96 11.53 8.91 11.3L15.96 7.22C16.5 7.69 17.21 8 18 8C19.66 8 21 6.66 21 5C21 3.34 19.66 2 18 2C16.34 2 15 3.34 15 5C15 5.24 15.04 5.47 15.09 5.7L8.04 9.78C7.5 9.31 6.79 9 6 9C4.34 9 3 10.34 3 12C3 13.66 4.34 15 6 15C6.79 15 7.5 14.69 8.04 14.22L15.16 18.35C15.11 18.56 15.08 18.78 15.08 19C15.08 20.66 16.42 22 18.08 22C19.74 22 21.08 20.66 21.08 19C21.08 17.34 19.74 16 18.08 16H18V16.08Z" />
+                </svg>
+              </button>
+            </li>
+          )}
+        </>
+      );
+    };
+
+    const shareBarContent = (
+      <div
+        className={`fixed top-0 right-5 lg:right-8 flex h-full items-center pointer-events-none z-40 transition-all duration-300 ease-in-out ${isActive
+            ? "opacity-100 visible translate-x-0"
+            : "opacity-0 invisible translate-x-4"
+          }`}
+      >
+        <ul className="pointer-events-auto bg-card backdrop-blur-sm rounded-full shadow-lg p-2 border border-border">
+          {showOnlyNativeButton
+            ? renderNativeShareButton()
+            : renderSocialButtons()}
+        </ul>
+      </div>
     );
+
+    return portalContainer
+      ? ReactDOM.createPortal(shareBarContent, portalContainer)
+      : null;
   };
-
-  const shareBarContent = (
-    <div
-      className={`fixed top-0 right-5 lg:right-8 flex h-full items-center pointer-events-none z-40 transition-all duration-300 ease-in-out ${
-        isActive
-          ? "opacity-100 visible translate-x-0"
-          : "opacity-0 invisible translate-x-4"
-      }`}
-    >
-      <ul className="pointer-events-auto bg-card backdrop-blur-sm rounded-full shadow-lg p-2 border border-border">
-        {showOnlyNativeButton
-          ? renderNativeShareButton()
-          : renderSocialButtons()}
-      </ul>
-    </div>
-  );
-
-  return portalContainer
-    ? ReactDOM.createPortal(shareBarContent, portalContainer)
-    : null;
-};
 
 /********************************************************************
  * SocialShare - main component
@@ -402,15 +401,18 @@ export const SocialShare: React.FC<SocialShareProps> = ({
         }
 
         case "facebook": {
-          // Facebook's sharer.php supports a 'quote' parameter for share text
-          // Note: The quote parameter only works on mobile Facebook apps and some desktop scenarios
-          // For best results, ensure the shared page has proper Open Graph meta tags
+          // Facebook sharer supports 'quote' for pre-fill text and 'hashtag' for a single hashtag
+          // Note: The link preview (title, description, image) always comes from OG tags on the shared URL
           let url = `${FACEBOOK_SHARE_URL}?u=${encodeURIComponent(shareUrl)}`;
           if (summaryContent || postTitle) {
             const quote = summaryContent
               ? `${postTitle}: ${summaryContent}`
               : postTitle;
             url += `&quote=${encodeURIComponent(quote)}`;
+          }
+          if (hashtags.length > 0) {
+            // Facebook only supports a single hashtag, prefixed with #
+            url += `&hashtag=${encodeURIComponent("#" + hashtags[0].replace(/\s+/g, ""))}`;
           }
           log("getSocialUrl", "Facebook URL built", {
             url: url.substring(0, 150) + "...",
@@ -419,11 +421,17 @@ export const SocialShare: React.FC<SocialShareProps> = ({
         }
 
         case "linkedin": {
-          // LinkedIn's share-offsite endpoint only accepts URL
-          // Title/description come from the page's Open Graph tags
-          // Note: For custom text, LinkedIn would require their Share Article API with OAuth
-          const url = `${LINKEDIN_SHARE_URL}?url=${encodeURIComponent(shareUrl)}`;
-          log("getSocialUrl", "LinkedIn URL built", { url });
+          // LinkedIn's shareArticle endpoint supports title and summary params
+          let url = `${LINKEDIN_SHARE_URL}?mini=true&url=${encodeURIComponent(shareUrl)}`;
+          if (postTitle) {
+            url += `&title=${encodeURIComponent(postTitle)}`;
+          }
+          if (summaryContent) {
+            url += `&summary=${encodeURIComponent(summaryContent)}`;
+          }
+          log("getSocialUrl", "LinkedIn URL built", {
+            url: url.substring(0, 150) + "...",
+          });
           return url;
         }
 
@@ -445,7 +453,7 @@ export const SocialShare: React.FC<SocialShareProps> = ({
 
         case "mail": {
           const subject = encodeURIComponent(postTitle);
-          // Build body with title, summary, and URL
+          // Build body with title, summary, URL, and image links
           let bodyContent = "";
           if (postTitle) {
             bodyContent = postTitle;
@@ -457,6 +465,10 @@ export const SocialShare: React.FC<SocialShareProps> = ({
           }
           if (shareUrl) {
             bodyContent += bodyContent ? `\n\n${shareUrl}` : shareUrl;
+          }
+          if (imgUrls && imgUrls.length > 0) {
+            bodyContent += bodyContent ? "\n\n" : "";
+            bodyContent += imgUrls.join("\n");
           }
           const body = encodeURIComponent(bodyContent);
           const mailtoUrl = `${MAIL_SHARE_URL}?subject=${subject}&body=${body}`;
@@ -492,33 +504,20 @@ export const SocialShare: React.FC<SocialShareProps> = ({
       });
 
       if (social === "mail") {
-        // For mailto: links, use window.location.href for maximum compatibility
-        // The anchor element approach can be unreliable in some browsers
-        try {
-          log(
-            "handleSocialShare",
-            "Opening mail client via window.location.href",
-          );
-          window.location.href = url;
-        } catch (error) {
-          // Fallback: create and click a temporary anchor element
-          log(
-            "handleSocialShare",
-            "window.location failed, trying anchor fallback",
-            {
-              error: String(error),
-            },
-          );
-          const a = document.createElement("a");
-          a.href = url;
-          a.style.display = "none";
-          document.body.appendChild(a);
-          a.click();
-          // Clean up after a short delay
-          setTimeout(() => {
-            document.body.removeChild(a);
-          }, 100);
-        }
+        // For mailto: links, create a temporary anchor element and click it.
+        // This is more reliable than window.location.href in SPAs (e.g. Next.js)
+        // which can intercept or silently swallow the navigation.
+        log("handleSocialShare", "Opening mail client via anchor click");
+        const link = document.createElement("a");
+        link.href = url;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.style.display = "none";
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+          document.body.removeChild(link);
+        }, 100);
       } else {
         // For social platforms, open in a popup window
         const popupFeatures =

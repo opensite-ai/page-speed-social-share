@@ -91,7 +91,7 @@ describe("useMobileShare", () => {
     unmount();
   });
 
-  it("calls navigator.share with title and url", async () => {
+  it("calls navigator.share with title and url embedded in text", async () => {
     const shareFn = patchNavigatorShare();
 
     const { result, unmount } = renderHook(() =>
@@ -103,10 +103,12 @@ describe("useMobileShare", () => {
     });
 
     expect(shareFn).toHaveBeenCalledTimes(1);
-    expect(shareFn.mock.calls[0][0]).toMatchObject({
-      title: "Hello",
-      url: "https://example.com",
-    });
+    const shareData = shareFn.mock.calls[0][0];
+    expect(shareData.title).toBe("Hello");
+    // URL is now embedded in the text field instead of a separate url property
+    expect(shareData.text).toContain("Hello");
+    expect(shareData.text).toContain("https://example.com");
+    expect(shareData.url).toBeUndefined();
 
     unmount();
   });

@@ -27,9 +27,9 @@ vi.mock("../src/hooks/useMobileShare", () => ({
 // Provide a minimal IntersectionObserver stub for jsdom
 beforeAll(() => {
   class FakeIO {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
+    observe() { }
+    unobserve() { }
+    disconnect() { }
   }
   (globalThis as any).IntersectionObserver = FakeIO;
   (globalThis as any).IntersectionObserverEntry = {
@@ -180,24 +180,26 @@ describe("SocialShare", () => {
       openSpy.mockRestore();
     });
 
-    it("uses mailto: for email sharing via window.location.href", () => {
-      // Mock window.location.href setter
-      const originalLocation = window.location;
+    it("uses mailto: for email sharing via anchor element click", () => {
+      // Mock document.createElement to capture the anchor href
+      const originalCreateElement = document.createElement.bind(document);
       let capturedHref = "";
-      const mockLocation = {
-        ...originalLocation,
-        set href(val: string) {
-          capturedHref = val;
-        },
-        get href() {
-          return capturedHref || originalLocation.href;
-        },
-      };
+      const clickSpy = vi.fn();
 
-      Object.defineProperty(window, "location", {
-        value: mockLocation,
-        writable: true,
-        configurable: true,
+      vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
+        const el = originalCreateElement(tag);
+        if (tag === "a") {
+          Object.defineProperty(el, "href", {
+            set(val: string) {
+              capturedHref = val;
+            },
+            get() {
+              return capturedHref;
+            },
+          });
+          el.click = clickSpy;
+        }
+        return el;
       });
 
       render(<SocialShare {...defaultProps} />);
@@ -206,13 +208,9 @@ describe("SocialShare", () => {
       expect(capturedHref).toContain("mailto:");
       expect(capturedHref).toContain("subject=");
       expect(capturedHref).toContain("body=");
+      expect(clickSpy).toHaveBeenCalled();
 
-      // Restore original location
-      Object.defineProperty(window, "location", {
-        value: originalLocation,
-        writable: true,
-        configurable: true,
-      });
+      vi.restoreAllMocks();
     });
 
     it("builds correct Facebook share URL", () => {
@@ -222,28 +220,33 @@ describe("SocialShare", () => {
       fireEvent.click(screen.getByLabelText("Share on Facebook"));
 
       const calledUrl = openSpy.mock.calls[0][0] as string;
-      expect(calledUrl).toContain("facebook.com/sharer.php");
+      expect(calledUrl).toContain("facebook.com/sharer/sharer.php");
       expect(calledUrl).toContain(
         `u=${encodeURIComponent("https://example.com/test")}`,
       );
+      expect(calledUrl).toContain("quote=");
 
       openSpy.mockRestore();
     });
 
-    it("builds correct LinkedIn share URL with share-offsite endpoint", () => {
+    it("builds correct LinkedIn share URL with title and summary", () => {
       const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
 
       render(<SocialShare {...defaultProps} />);
       fireEvent.click(screen.getByLabelText("Share on LinkedIn"));
 
       const calledUrl = openSpy.mock.calls[0][0] as string;
-      expect(calledUrl).toContain("linkedin.com/sharing/share-offsite");
+      expect(calledUrl).toContain("linkedin.com/shareArticle");
+      expect(calledUrl).toContain("mini=true");
       expect(calledUrl).toContain(
         `url=${encodeURIComponent("https://example.com/test")}`,
       );
-      // Should NOT contain deprecated title/summary params
-      expect(calledUrl).not.toContain("title=");
-      expect(calledUrl).not.toContain("summary=");
+      expect(calledUrl).toContain(
+        `title=${encodeURIComponent("Test Title")}`,
+      );
+      expect(calledUrl).toContain(
+        `summary=${encodeURIComponent("A short summary.")}`,
+      );
 
       openSpy.mockRestore();
     });

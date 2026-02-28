@@ -1,6 +1,6 @@
 {
   "name": "@page-speed/social-share",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Performance-optimized social sharing component with inline, sticky, and combo variants for React applications.",
   "keywords": [
     "react",

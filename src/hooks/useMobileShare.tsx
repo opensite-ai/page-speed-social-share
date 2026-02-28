@@ -49,13 +49,14 @@ const fetchBlob = async (url: string): Promise<Blob> => {
       log("fetchBlob", "Proxy fetch successful", { size: (await blob).size });
       return blob;
     } else {
-      log("fetchBlob", "Fetching directly (no proxy)", { url });
+      // Try standard CORS fetch first - this works when the image server
+      // returns proper Access-Control-Allow-Origin headers.
+      log("fetchBlob", "Fetching with CORS mode", { url });
       const response = await fetch(url, {
-        mode: "no-cors",
-        credentials: "same-origin",
+        mode: "cors",
       });
       const blob = response.blob();
-      log("fetchBlob", "Direct fetch complete", { size: (await blob).size });
+      log("fetchBlob", "CORS fetch complete", { size: (await blob).size });
       return blob;
     }
   } catch (error) {
@@ -253,22 +254,24 @@ const useMobileShare = (params: ShareParams): ShareResult => {
       attachmentsEnabled,
     });
 
-    // Build share data with text as the primary content
+    // Build share data: combine text + URL into the 'text' field.
+    // When 'url' is set as a separate property, many native apps (especially
+    // Messages on macOS / iOS) only share the URL and silently discard 'text'.
+    // By embedding the URL inside the text we ensure the full content reaches
+    // the share target.
+    let fullText = text || title || "";
+    if (url) {
+      fullText = fullText ? `${fullText}\n\n${url}` : url;
+    }
+
     const shareData: ShareData = {
       title,
-      // CRITICAL: 'text' is the main share content for most apps
-      // This was missing before, causing only the URL to be shared
-      text: text || title,
+      text: fullText,
     };
-
-    if (url) {
-      shareData.url = url;
-    }
 
     log("useMobileShare", "Built shareData", {
       title: shareData.title,
       text: shareData.text?.substring(0, 100) + "...",
-      url: shareData.url,
     });
 
     try {
