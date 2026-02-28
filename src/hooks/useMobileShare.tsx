@@ -83,12 +83,35 @@ const fetchBlob = async (url: string): Promise<Blob> => {
 const urlToBase64 = async (url: string): Promise<string> => {
   log("urlToBase64", "Converting URL to base64", { url });
   try {
-    const blob = await fetchBlob(url);
+    let blob = await fetchBlob(url);
 
     // Opaque responses from no-cors produce 0-byte blobs – skip them.
     if (blob.size === 0) {
       log("urlToBase64", "Got empty blob, skipping", { url });
       return "";
+    }
+
+    // Some servers return a generic MIME type (application/octet-stream).
+    // The Web Share API rejects files without a proper image/* type, so
+    // infer the correct type from the URL extension when needed.
+    if (!blob.type || blob.type === "application/octet-stream") {
+      const ext = url.split("?")[0].split(".").pop()?.toLowerCase();
+      const mimeMap: Record<string, string> = {
+        jpg: "image/jpeg",
+        jpeg: "image/jpeg",
+        png: "image/png",
+        gif: "image/gif",
+        webp: "image/webp",
+        svg: "image/svg+xml",
+      };
+      const correctType = ext && mimeMap[ext];
+      if (correctType) {
+        log("urlToBase64", "Re-typing blob", {
+          from: blob.type,
+          to: correctType,
+        });
+        blob = new Blob([blob], { type: correctType });
+      }
     }
 
     return new Promise((resolve) => {
@@ -254,12 +277,15 @@ const useMobileShare = (params: ShareParams): ShareResult => {
       attachmentsEnabled,
     });
 
-    // Build share data: combine text + URL into the 'text' field.
-    // When 'url' is set as a separate property, many native apps (especially
-    // Messages on macOS / iOS) only share the URL and silently discard 'text'.
-    // By embedding the URL inside the text we ensure the full content reaches
-    // the share target.
-    let fullText = text || title || "";
+    // Build share data: compose title + text + URL into a single 'text' field.
+    // When 'url' is set as a separate ShareData property, many native apps
+    // (especially Messages on macOS / iOS) only share the URL and silently
+    // discard 'text'. By embedding everything in 'text' we ensure the full
+    // content reaches the share target.
+    let fullText = title || "";
+    if (text) {
+      fullText = fullText ? `${fullText}\n\n${text}` : text;
+    }
     if (url) {
       fullText = fullText ? `${fullText}\n\n${url}` : url;
     }
@@ -311,9 +337,20 @@ const useMobileShare = (params: ShareParams): ShareResult => {
           });
 
           if (canShareFiles) {
-            log("useMobileShare", "Sharing with files attached");
-            await navigator.share(shareDataWithFiles);
-            return;
+            try {
+              log("useMobileShare", "Sharing with files attached");
+              await navigator.share(shareDataWithFiles);
+              return;
+            } catch (fileErr: any) {
+              // File-attached share can fail (e.g. NotAllowedError due to
+              // MIME type issues). Fall through to text-only share instead
+              // of surfacing the error immediately.
+              log(
+                "useMobileShare",
+                "Share with files failed, falling back to text-only",
+                { name: fileErr?.name, message: fileErr?.message },
+              );
+            }
           }
           // If canShare rejects files, fall through to share without them
           log(

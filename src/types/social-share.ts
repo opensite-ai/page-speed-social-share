@@ -19,6 +19,12 @@ export type SocialShareProps = {
    * When omitted the component falls back to common selectors, then to `window`.
    */
   scrollContainerSelector?: string;
+  /**
+   * Console settings for enabling/disabling the visibility for specific share options
+   * Defaults to all platforms exact email as true
+   * Example: platformsConfig={{ x: true, facebook: true, pinterest: true, linkedIn: true, email: false, nativeTools: true }}
+   */
+  platformsConfig?: { x: boolean, facebook: boolean, pinterest: boolean, linkedIn: boolean, email: boolean, nativeTools: boolean };
 };
 
 export interface ShareParams {

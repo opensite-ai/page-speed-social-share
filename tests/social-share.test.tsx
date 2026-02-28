@@ -62,13 +62,14 @@ describe("SocialShare", () => {
   // ---- Standard variant rendering -----------------------------------------
 
   describe("standard variant", () => {
-    it("renders X, Facebook, LinkedIn, and Email buttons", () => {
+    it("renders X, Facebook, and LinkedIn buttons (email hidden by default)", () => {
       render(<SocialShare {...defaultProps} />);
 
       expect(screen.getByLabelText("Share on X")).toBeInTheDocument();
       expect(screen.getByLabelText("Share on Facebook")).toBeInTheDocument();
       expect(screen.getByLabelText("Share on LinkedIn")).toBeInTheDocument();
-      expect(screen.getByLabelText("Share via Email")).toBeInTheDocument();
+      // Email is hidden by default (email: false in platformsConfig defaults)
+      expect(screen.queryByLabelText("Share via Email")).not.toBeInTheDocument();
     });
 
     it("does not render Pinterest button when imgUrls is empty", () => {
@@ -202,7 +203,13 @@ describe("SocialShare", () => {
         return el;
       });
 
-      render(<SocialShare {...defaultProps} />);
+      // Must enable email via platformsConfig since it's off by default
+      render(
+        <SocialShare
+          {...defaultProps}
+          platformsConfig={{ x: true, facebook: true, pinterest: true, linkedIn: true, email: true, nativeTools: true }}
+        />,
+      );
       fireEvent.click(screen.getByLabelText("Share via Email"));
 
       expect(capturedHref).toContain("mailto:");
@@ -267,6 +274,49 @@ describe("SocialShare", () => {
       expect(calledUrl).toContain(encodeURIComponent("A short summary."));
 
       openSpy.mockRestore();
+    });
+  });
+
+  // ---- platformsConfig visibility ------------------------------------------
+
+  describe("platformsConfig", () => {
+    it("shows email button when email is enabled", () => {
+      render(
+        <SocialShare
+          {...defaultProps}
+          platformsConfig={{ x: true, facebook: true, pinterest: true, linkedIn: true, email: true, nativeTools: true }}
+        />,
+      );
+
+      expect(screen.getByLabelText("Share via Email")).toBeInTheDocument();
+    });
+
+    it("hides X button when x is disabled", () => {
+      render(
+        <SocialShare
+          {...defaultProps}
+          platformsConfig={{ x: false, facebook: true, pinterest: true, linkedIn: true, email: false, nativeTools: true }}
+        />,
+      );
+
+      expect(screen.queryByLabelText("Share on X")).not.toBeInTheDocument();
+      expect(screen.getByLabelText("Share on Facebook")).toBeInTheDocument();
+      expect(screen.getByLabelText("Share on LinkedIn")).toBeInTheDocument();
+    });
+
+    it("hides all social buttons except nativeTools when all platforms disabled", () => {
+      render(
+        <SocialShare
+          {...defaultProps}
+          platformsConfig={{ x: false, facebook: false, pinterest: false, linkedIn: false, email: false, nativeTools: false }}
+        />,
+      );
+
+      expect(screen.queryByLabelText("Share on X")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Share on Facebook")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Share on LinkedIn")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Share via Email")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Share on Pinterest")).not.toBeInTheDocument();
     });
   });
 

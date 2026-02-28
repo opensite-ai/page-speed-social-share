@@ -59,6 +59,7 @@ const StickyShareBar: React.FC<{
   imgUrls?: string[];
   isTouch?: boolean;
   scrollContainerSelector?: string;
+  platforms: { x: boolean; facebook: boolean; pinterest: boolean; linkedIn: boolean; email: boolean; nativeTools: boolean };
 }> = ({
   canShare,
   nativeShare,
@@ -66,6 +67,7 @@ const StickyShareBar: React.FC<{
   imgUrls,
   isTouch,
   scrollContainerSelector,
+  platforms,
 }) => {
     const [showSharebar, setShowSharebar] = useState<boolean>(false);
     const [hideSharebar, setHideSharebar] = useState<boolean>(false);
@@ -170,7 +172,7 @@ const StickyShareBar: React.FC<{
     // The final class toggling for visibility
     const isActive = showSharebar && !hideSharebar;
 
-    const showOnlyNativeButton = isTouch && canShare;
+    const showOnlyNativeButton = isTouch && canShare && platforms.nativeTools;
 
     const renderNativeShareButton = () => (
       <li>
@@ -195,33 +197,37 @@ const StickyShareBar: React.FC<{
       return (
         <>
           {/* X/Twitter */}
-          <li>
-            <button
-              type="button"
-              aria-label="Share on X"
-              className={STICKY_BTN_CLASS}
-              onClick={(e) => handleSocialShare(e, "x")}
-            >
-              <svg className={STICKY_ICON_CLASS} viewBox="0 0 24 24">
-                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-              </svg>
-            </button>
-          </li>
+          {platforms.x && (
+            <li>
+              <button
+                type="button"
+                aria-label="Share on X"
+                className={STICKY_BTN_CLASS}
+                onClick={(e) => handleSocialShare(e, "x")}
+              >
+                <svg className={STICKY_ICON_CLASS} viewBox="0 0 24 24">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                </svg>
+              </button>
+            </li>
+          )}
           {/* Facebook */}
-          <li>
-            <button
-              type="button"
-              aria-label="Share on Facebook"
-              className={STICKY_BTN_CLASS}
-              onClick={(e) => handleSocialShare(e, "facebook")}
-            >
-              <svg className={STICKY_ICON_CLASS} viewBox="0 0 32 32">
-                <path d="M32,16A16,16,0,1,0,13.5,31.806V20.625H9.438V16H13.5V12.475c0-4.01,2.389-6.225,6.043-6.225a24.644,24.644,0,0,1,3.582.312V10.5H21.107A2.312,2.312,0,0,0,18.5,13v3h4.438l-.71,4.625H18.5V31.806A16,16,0,0,0,32,16Z" />
-              </svg>
-            </button>
-          </li>
+          {platforms.facebook && (
+            <li>
+              <button
+                type="button"
+                aria-label="Share on Facebook"
+                className={STICKY_BTN_CLASS}
+                onClick={(e) => handleSocialShare(e, "facebook")}
+              >
+                <svg className={STICKY_ICON_CLASS} viewBox="0 0 32 32">
+                  <path d="M32,16A16,16,0,1,0,13.5,31.806V20.625H9.438V16H13.5V12.475c0-4.01,2.389-6.225,6.043-6.225a24.644,24.644,0,0,1,3.582.312V10.5H21.107A2.312,2.312,0,0,0,18.5,13v3h4.438l-.71,4.625H18.5V31.806A16,16,0,0,0,32,16Z" />
+                </svg>
+              </button>
+            </li>
+          )}
           {/* Pinterest (only if we have an image) */}
-          {imgUrls && imgUrls.length > 0 && (
+          {platforms.pinterest && imgUrls && imgUrls.length > 0 && (
             <li>
               <button
                 type="button"
@@ -236,33 +242,37 @@ const StickyShareBar: React.FC<{
             </li>
           )}
           {/* LinkedIn */}
-          <li>
-            <button
-              type="button"
-              aria-label="Share on LinkedIn"
-              className={STICKY_BTN_CLASS}
-              onClick={(e) => handleSocialShare(e, "linkedin")}
-            >
-              <svg className={STICKY_ICON_CLASS} viewBox="0 0 32 32">
-                <path d="M29,1H3A2,2,0,0,0,1,3V29a2,2,0,0,0,2,2H29a2,2,0,0,0,2-2V3A2,2,0,0,0,29,1ZM9.887,26.594H5.374V12.25H9.887ZM7.63,10.281a2.625,2.625,0,1,1,2.633-2.625A2.624,2.624,0,0,1,7.63,10.281ZM26.621,26.594H22.2V19.656c0-1.687,0-3.75-2.35-3.75s-2.633,1.782-2.633,3.656v7.126H12.8V12.25h4.136v1.969h.094a4.7,4.7,0,0,1,4.231-2.344c4.513,0,5.359,3,5.359,6.844Z" />
-              </svg>
-            </button>
-          </li>
+          {platforms.linkedIn && (
+            <li>
+              <button
+                type="button"
+                aria-label="Share on LinkedIn"
+                className={STICKY_BTN_CLASS}
+                onClick={(e) => handleSocialShare(e, "linkedin")}
+              >
+                <svg className={STICKY_ICON_CLASS} viewBox="0 0 32 32">
+                  <path d="M29,1H3A2,2,0,0,0,1,3V29a2,2,0,0,0,2,2H29a2,2,0,0,0,2-2V3A2,2,0,0,0,29,1ZM9.887,26.594H5.374V12.25H9.887ZM7.63,10.281a2.625,2.625,0,1,1,2.633-2.625A2.624,2.624,0,0,1,7.63,10.281ZM26.621,26.594H22.2V19.656c0-1.687,0-3.75-2.35-3.75s-2.633,1.782-2.633,3.656v7.126H12.8V12.25h4.136v1.969h.094a4.7,4.7,0,0,1,4.231-2.344c4.513,0,5.359,3,5.359,6.844Z" />
+                </svg>
+              </button>
+            </li>
+          )}
           {/* Email */}
-          <li>
-            <button
-              type="button"
-              aria-label="Share via Email"
-              className={STICKY_BTN_CLASS}
-              onClick={(e) => handleSocialShare(e, "mail")}
-            >
-              <svg className={STICKY_ICON_CLASS} viewBox="0 0 32 32">
-                <path d="M28,3H4A3.957,3.957,0,0,0,0,7V25a3.957,3.957,0,0,0,4,4H28a3.957,3.957,0,0,0,4-4V7A3.957,3.957,0,0,0,28,3Zm.6,6.8-12,9a1,1,0,0,1-1.2,0l-12-9A1,1,0,0,1,4.6,8.2L16,16.75,27.4,8.2a1,1,0,1,1,1.2,1.6Z" />
-              </svg>
-            </button>
-          </li>
+          {platforms.email && (
+            <li>
+              <button
+                type="button"
+                aria-label="Share via Email"
+                className={STICKY_BTN_CLASS}
+                onClick={(e) => handleSocialShare(e, "mail")}
+              >
+                <svg className={STICKY_ICON_CLASS} viewBox="0 0 32 32">
+                  <path d="M28,3H4A3.957,3.957,0,0,0,0,7V25a3.957,3.957,0,0,0,4,4H28a3.957,3.957,0,0,0,4-4V7A3.957,3.957,0,0,0,28,3Zm.6,6.8-12,9a1,1,0,0,1-1.2,0l-12-9A1,1,0,0,1,4.6,8.2L16,16.75,27.4,8.2a1,1,0,1,1,1.2,1.6Z" />
+                </svg>
+              </button>
+            </li>
+          )}
           {/* Add native share button on desktop only if available */}
-          {canShare && !isTouch && (
+          {platforms.nativeTools && canShare && !isTouch && (
             <li>
               <button
                 type="button"
@@ -287,8 +297,8 @@ const StickyShareBar: React.FC<{
     const shareBarContent = (
       <div
         className={`fixed top-0 right-5 lg:right-8 flex h-full items-center pointer-events-none z-40 transition-all duration-300 ease-in-out ${isActive
-            ? "opacity-100 visible translate-x-0"
-            : "opacity-0 invisible translate-x-4"
+          ? "opacity-100 visible translate-x-0"
+          : "opacity-0 invisible translate-x-4"
           }`}
       >
         <ul className="pointer-events-auto bg-card backdrop-blur-sm rounded-full shadow-lg p-2 border border-border">
@@ -318,7 +328,18 @@ export const SocialShare: React.FC<SocialShareProps> = ({
   inlineSize = 42,
   disableImageAttachments = false,
   scrollContainerSelector,
+  platformsConfig,
 }) => {
+  // Merge caller-supplied flags with defaults (all true except email)
+  const platforms = {
+    x: true,
+    facebook: true,
+    pinterest: true,
+    linkedIn: true,
+    email: false,
+    nativeTools: true,
+    ...platformsConfig,
+  };
   log("SocialShare", "Component rendering", {
     variant,
     postTitle,
@@ -333,27 +354,23 @@ export const SocialShare: React.FC<SocialShareProps> = ({
   const { isTouchDevice: isTouch } = useIsTouchDevice();
   const isMobileOrTablet = screenType === "MOBILE" || screenType === "TABLET";
 
-  // Build the share text from title and summary
-  // This is the main content that will be shared to native share targets
-  const shareText = summaryContent
-    ? `${postTitle}\n\n${summaryContent}`
-    : postTitle;
-
+  // Pass summaryContent separately – the hook will compose the full text
+  // by combining title + summaryContent + url (avoids duplicate postTitle).
   log("SocialShare", "Built share text", {
-    shareText: shareText.substring(0, 100) + "...",
+    summaryContent: summaryContent?.substring(0, 100) + "...",
   });
 
   // Setup native share capabilities
   const { share: originalNativeShare, canShare } = useMobileShare({
     title: postTitle,
-    text: shareText,
+    text: summaryContent || "",
     url: shareUrl,
     imageUrls: imgUrls,
     attachImages: !disableImageAttachments,
   });
 
   // Determine what to render based on device and capabilities
-  const showOnlyNativeButton = isTouch && isMobileOrTablet && canShare;
+  const showOnlyNativeButton = isTouch && isMobileOrTablet && canShare && platforms.nativeTools;
 
   const handleNativeShare = useCallback(() => {
     log("handleNativeShare", "Native share triggered", { canShare });
@@ -507,11 +524,12 @@ export const SocialShare: React.FC<SocialShareProps> = ({
         // For mailto: links, create a temporary anchor element and click it.
         // This is more reliable than window.location.href in SPAs (e.g. Next.js)
         // which can intercept or silently swallow the navigation.
+        // IMPORTANT: Do NOT set target="_blank" – that causes the browser to
+        // open a new tab first which can be blocked by popup blockers and
+        // prevents the mailto: protocol handler from firing on some platforms.
         log("handleSocialShare", "Opening mail client via anchor click");
         const link = document.createElement("a");
         link.href = url;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
         link.style.display = "none";
         document.body.appendChild(link);
         link.click();
@@ -568,43 +586,47 @@ export const SocialShare: React.FC<SocialShareProps> = ({
   const renderSocialButtons = () => (
     <ul className="flex flex-wrap gap-2 lg:gap-3 justify-center">
       {/* X (formerly Twitter) */}
-      <li>
-        <button
-          type="button"
-          aria-label="Share on X"
-          className={INLINE_BTN_CLASS}
-          style={{ width: inlineSize, height: inlineSize }}
-          onClick={(e) => handleSocialShare(e, "x")}
-        >
-          <svg
-            className={INLINE_ICON_CLASS}
-            style={{ width: iconSize, height: iconSize }}
-            viewBox="0 0 24 24"
+      {platforms.x && (
+        <li>
+          <button
+            type="button"
+            aria-label="Share on X"
+            className={INLINE_BTN_CLASS}
+            style={{ width: inlineSize, height: inlineSize }}
+            onClick={(e) => handleSocialShare(e, "x")}
           >
-            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-          </svg>
-        </button>
-      </li>
+            <svg
+              className={INLINE_ICON_CLASS}
+              style={{ width: iconSize, height: iconSize }}
+              viewBox="0 0 24 24"
+            >
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+            </svg>
+          </button>
+        </li>
+      )}
       {/* Facebook */}
-      <li>
-        <button
-          type="button"
-          aria-label="Share on Facebook"
-          className={INLINE_BTN_CLASS}
-          style={{ width: inlineSize, height: inlineSize }}
-          onClick={(e) => handleSocialShare(e, "facebook")}
-        >
-          <svg
-            className={INLINE_ICON_CLASS}
-            style={{ width: iconSize, height: iconSize }}
-            viewBox="0 0 32 32"
+      {platforms.facebook && (
+        <li>
+          <button
+            type="button"
+            aria-label="Share on Facebook"
+            className={INLINE_BTN_CLASS}
+            style={{ width: inlineSize, height: inlineSize }}
+            onClick={(e) => handleSocialShare(e, "facebook")}
           >
-            <path d="M32,16A16,16,0,1,0,13.5,31.806V20.625H9.438V16H13.5V12.475c0-4.01,2.389-6.225,6.043-6.225a24.644,24.644,0,0,1,3.582.312V10.5H21.107A2.312,2.312,0,0,0,18.5,13v3h4.438l-.71,4.625H18.5V31.806A16,16,0,0,0,32,16Z" />
-          </svg>
-        </button>
-      </li>
+            <svg
+              className={INLINE_ICON_CLASS}
+              style={{ width: iconSize, height: iconSize }}
+              viewBox="0 0 32 32"
+            >
+              <path d="M32,16A16,16,0,1,0,13.5,31.806V20.625H9.438V16H13.5V12.475c0-4.01,2.389-6.225,6.043-6.225a24.644,24.644,0,0,1,3.582.312V10.5H21.107A2.312,2.312,0,0,0,18.5,13v3h4.438l-.71,4.625H18.5V31.806A16,16,0,0,0,32,16Z" />
+            </svg>
+          </button>
+        </li>
+      )}
       {/* Pinterest */}
-      {imgUrls && imgUrls.length > 0 && (
+      {platforms.pinterest && imgUrls && imgUrls.length > 0 && (
         <li>
           <button
             type="button"
@@ -624,43 +646,47 @@ export const SocialShare: React.FC<SocialShareProps> = ({
         </li>
       )}
       {/* LinkedIn */}
-      <li>
-        <button
-          type="button"
-          aria-label="Share on LinkedIn"
-          className={INLINE_BTN_CLASS}
-          style={{ width: inlineSize, height: inlineSize }}
-          onClick={(e) => handleSocialShare(e, "linkedin")}
-        >
-          <svg
-            className={INLINE_ICON_CLASS}
-            style={{ width: iconSize, height: iconSize }}
-            viewBox="0 0 32 32"
+      {platforms.linkedIn && (
+        <li>
+          <button
+            type="button"
+            aria-label="Share on LinkedIn"
+            className={INLINE_BTN_CLASS}
+            style={{ width: inlineSize, height: inlineSize }}
+            onClick={(e) => handleSocialShare(e, "linkedin")}
           >
-            <path d="M29,1H3A2,2,0,0,0,1,3V29a2,2,0,0,0,2,2H29a2,2,0,0,0,2-2V3A2,2,0,0,0,29,1ZM9.887,26.594H5.374V12.25H9.887ZM7.63,10.281a2.625,2.625,0,1,1,2.633-2.625A2.624,2.624,0,0,1,7.63,10.281ZM26.621,26.594H22.2V19.656c0-1.687,0-3.75-2.35-3.75s-2.633,1.782-2.633,3.656v7.126H12.8V12.25h4.136v1.969h.094a4.7,4.7,0,0,1,4.231-2.344c4.513,0,5.359,3,5.359,6.844Z" />
-          </svg>
-        </button>
-      </li>
+            <svg
+              className={INLINE_ICON_CLASS}
+              style={{ width: iconSize, height: iconSize }}
+              viewBox="0 0 32 32"
+            >
+              <path d="M29,1H3A2,2,0,0,0,1,3V29a2,2,0,0,0,2,2H29a2,2,0,0,0,2-2V3A2,2,0,0,0,29,1ZM9.887,26.594H5.374V12.25H9.887ZM7.63,10.281a2.625,2.625,0,1,1,2.633-2.625A2.624,2.624,0,0,1,7.63,10.281ZM26.621,26.594H22.2V19.656c0-1.687,0-3.75-2.35-3.75s-2.633,1.782-2.633,3.656v7.126H12.8V12.25h4.136v1.969h.094a4.7,4.7,0,0,1,4.231-2.344c4.513,0,5.359,3,5.359,6.844Z" />
+            </svg>
+          </button>
+        </li>
+      )}
       {/* Email */}
-      <li>
-        <button
-          type="button"
-          aria-label="Share via Email"
-          className={INLINE_BTN_CLASS}
-          style={{ width: inlineSize, height: inlineSize }}
-          onClick={(e) => handleSocialShare(e, "mail")}
-        >
-          <svg
-            className={INLINE_ICON_CLASS}
-            style={{ width: iconSize, height: iconSize }}
-            viewBox="0 0 32 32"
+      {platforms.email && (
+        <li>
+          <button
+            type="button"
+            aria-label="Share via Email"
+            className={INLINE_BTN_CLASS}
+            style={{ width: inlineSize, height: inlineSize }}
+            onClick={(e) => handleSocialShare(e, "mail")}
           >
-            <path d="M28,3H4A3.957,3.957,0,0,0,0,7V25a3.957,3.957,0,0,0,4,4H28a3.957,3.957,0,0,0,4-4V7A3.957,3.957,0,0,0,28,3Zm.6,6.8-12,9a1,1,0,0,1-1.2,0l-12-9A1,1,0,0,1,4.6,8.2L16,16.75,27.4,8.2a1,1,0,1,1,1.2,1.6Z" />
-          </svg>
-        </button>
-      </li>
+            <svg
+              className={INLINE_ICON_CLASS}
+              style={{ width: iconSize, height: iconSize }}
+              viewBox="0 0 32 32"
+            >
+              <path d="M28,3H4A3.957,3.957,0,0,0,0,7V25a3.957,3.957,0,0,0,4,4H28a3.957,3.957,0,0,0,4-4V7A3.957,3.957,0,0,0,28,3Zm.6,6.8-12,9a1,1,0,0,1-1.2,0l-12-9A1,1,0,0,1,4.6,8.2L16,16.75,27.4,8.2a1,1,0,1,1,1.2,1.6Z" />
+            </svg>
+          </button>
+        </li>
+      )}
       {/* Add native share button at the end for desktop if available */}
-      {canShare && !isTouch && (
+      {platforms.nativeTools && canShare && !isTouch && (
         <li>
           <button
             type="button"
@@ -706,6 +732,7 @@ export const SocialShare: React.FC<SocialShareProps> = ({
           imgUrls={imgUrls}
           isTouch={isTouch}
           scrollContainerSelector={scrollContainerSelector}
+          platforms={platforms}
         />
       )}
     </>
