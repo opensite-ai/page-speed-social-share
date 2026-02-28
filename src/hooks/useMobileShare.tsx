@@ -277,17 +277,22 @@ const useMobileShare = (params: ShareParams): ShareResult => {
       attachmentsEnabled,
     });
 
-    // Build share data: compose title + text + URL into a single 'text' field.
+    // Build share data: compose text + URL into the 'text' field.
+    // The title is passed separately via shareData.title – do NOT duplicate
+    // it inside fullText because Messages (macOS/iOS) renders both the title
+    // property and the text property, which causes the title to appear twice.
     // When 'url' is set as a separate ShareData property, many native apps
-    // (especially Messages on macOS / iOS) only share the URL and silently
-    // discard 'text'. By embedding everything in 'text' we ensure the full
-    // content reaches the share target.
-    let fullText = title || "";
-    if (text) {
-      fullText = fullText ? `${fullText}\n\n${text}` : text;
-    }
+    // only share the URL and silently discard 'text'. By embedding the URL
+    // in 'text' we ensure the full content reaches the share target.
+    let fullText = text || "";
     if (url) {
       fullText = fullText ? `${fullText}\n\n${url}` : url;
+    }
+    // Add a trailing newline when images will be attached so the image
+    // thumbnail doesn't sit flush against the URL in the message bubble.
+    const hasImages = attachmentsEnabled && base64Images.length > 0;
+    if (hasImages && fullText) {
+      fullText += "\n";
     }
 
     const shareData: ShareData = {
