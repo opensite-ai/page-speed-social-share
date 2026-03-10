@@ -1,6 +1,6 @@
 export type SocialShareProps = {
   containerClassName?: string;
-  summaryContent: string;
+  summaryContent?: string;
   shareUrl: string;
   postTitle: string;
   imgUrls?: string[];
@@ -24,7 +24,14 @@ export type SocialShareProps = {
    * Defaults to all platforms exact email as true
    * Example: platformsConfig={{ x: true, facebook: true, pinterest: true, linkedIn: true, email: false, nativeTools: true }}
    */
-  platformsConfig?: { x: boolean, facebook: boolean, pinterest: boolean, linkedIn: boolean, email: boolean, nativeTools: boolean };
+  platformsConfig?: {
+    x: boolean;
+    facebook: boolean;
+    pinterest: boolean;
+    linkedIn: boolean;
+    email: boolean;
+    nativeTools: boolean;
+  };
 };
 
 export interface ShareParams {

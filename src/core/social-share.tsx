@@ -327,7 +327,7 @@ const StickyShareBar: React.FC<{
  ********************************************************************/
 export const SocialShare: React.FC<SocialShareProps> = ({
   containerClassName = "",
-  summaryContent,
+  summaryContent = "",
   shareUrl,
   postTitle,
   imgUrls,
@@ -352,7 +352,7 @@ export const SocialShare: React.FC<SocialShareProps> = ({
     variant,
     postTitle,
     shareUrl,
-    summaryContent: summaryContent?.substring(0, 50) + "...",
+    summaryContent: summaryContent.substring(0, 50) + "...",
     imgUrls: imgUrls?.length ?? 0,
     hashtags,
     disableImageAttachments,
@@ -365,7 +365,7 @@ export const SocialShare: React.FC<SocialShareProps> = ({
   // Pass summaryContent separately – the hook will compose the full text
   // by combining title + summaryContent + url (avoids duplicate postTitle).
   log("SocialShare", "Built share text", {
-    summaryContent: summaryContent?.substring(0, 100) + "...",
+    summaryContent: summaryContent.substring(0, 100) + "...",
   });
 
   // Setup native share capabilities
@@ -403,7 +403,7 @@ export const SocialShare: React.FC<SocialShareProps> = ({
       log("getSocialUrl", `Building URL for ${social}`, {
         postTitle,
         shareUrl,
-        summaryContent: summaryContent?.substring(0, 50) + "...",
+        summaryContent: summaryContent.substring(0, 50) + "...",
         hashtags,
         hasImages: !!(imgUrls && imgUrls.length > 0),
       });

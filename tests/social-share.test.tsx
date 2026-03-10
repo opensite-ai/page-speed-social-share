@@ -27,9 +27,9 @@ vi.mock("../src/hooks/useMobileShare", () => ({
 // Provide a minimal IntersectionObserver stub for jsdom
 beforeAll(() => {
   class FakeIO {
-    observe() { }
-    unobserve() { }
-    disconnect() { }
+    observe() {}
+    unobserve() {}
+    disconnect() {}
   }
   (globalThis as any).IntersectionObserver = FakeIO;
   (globalThis as any).IntersectionObserverEntry = {
@@ -51,7 +51,6 @@ afterEach(() => {
 const defaultProps = {
   postTitle: "Test Title",
   shareUrl: "https://example.com/test",
-  summaryContent: "A short summary.",
 };
 
 // ---------------------------------------------------------------------------
@@ -69,7 +68,9 @@ describe("SocialShare", () => {
       expect(screen.getByLabelText("Share on Facebook")).toBeInTheDocument();
       expect(screen.getByLabelText("Share on LinkedIn")).toBeInTheDocument();
       // Email is hidden by default (email: false in platformsConfig defaults)
-      expect(screen.queryByLabelText("Share via Email")).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Share via Email"),
+      ).not.toBeInTheDocument();
     });
 
     it("does not render Pinterest button when imgUrls is empty", () => {
@@ -207,7 +208,14 @@ describe("SocialShare", () => {
       render(
         <SocialShare
           {...defaultProps}
-          platformsConfig={{ x: true, facebook: true, pinterest: true, linkedIn: true, email: true, nativeTools: true }}
+          platformsConfig={{
+            x: true,
+            facebook: true,
+            pinterest: true,
+            linkedIn: true,
+            email: true,
+            nativeTools: true,
+          }}
         />,
       );
       fireEvent.click(screen.getByLabelText("Share via Email"));
@@ -239,7 +247,9 @@ describe("SocialShare", () => {
     it("builds correct LinkedIn share URL with title and summary", () => {
       const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
 
-      render(<SocialShare {...defaultProps} />);
+      render(
+        <SocialShare {...defaultProps} summaryContent="A short summary." />,
+      );
       fireEvent.click(screen.getByLabelText("Share on LinkedIn"));
 
       const calledUrl = openSpy.mock.calls[0][0] as string;
@@ -248,12 +258,24 @@ describe("SocialShare", () => {
       expect(calledUrl).toContain(
         `url=${encodeURIComponent("https://example.com/test")}`,
       );
-      expect(calledUrl).toContain(
-        `title=${encodeURIComponent("Test Title")}`,
-      );
+      expect(calledUrl).toContain(`title=${encodeURIComponent("Test Title")}`);
       expect(calledUrl).toContain(
         `summary=${encodeURIComponent("A short summary.")}`,
       );
+
+      openSpy.mockRestore();
+    });
+
+    it("omits summary param from LinkedIn URL when summaryContent is not provided", () => {
+      const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+
+      render(<SocialShare {...defaultProps} />);
+      fireEvent.click(screen.getByLabelText("Share on LinkedIn"));
+
+      const calledUrl = openSpy.mock.calls[0][0] as string;
+      expect(calledUrl).toContain("linkedin.com/shareArticle");
+      expect(calledUrl).toContain(`title=${encodeURIComponent("Test Title")}`);
+      expect(calledUrl).not.toContain("summary=");
 
       openSpy.mockRestore();
     });
@@ -262,16 +284,38 @@ describe("SocialShare", () => {
       const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
       const imgUrl = "https://example.com/photo.jpg";
 
-      render(<SocialShare {...defaultProps} imgUrls={[imgUrl]} />);
+      render(
+        <SocialShare
+          {...defaultProps}
+          summaryContent="A short summary."
+          imgUrls={[imgUrl]}
+        />,
+      );
       fireEvent.click(screen.getByLabelText("Share on Pinterest"));
 
       const calledUrl = openSpy.mock.calls[0][0] as string;
       expect(calledUrl).toContain("pinterest.com/pin/create/button");
       expect(calledUrl).toContain(`media=${encodeURIComponent(imgUrl)}`);
-      // Pinterest description now includes summaryContent
+      // Pinterest description includes both title and summaryContent when provided
       expect(calledUrl).toContain("description=");
       expect(calledUrl).toContain(encodeURIComponent("Test Title"));
       expect(calledUrl).toContain(encodeURIComponent("A short summary."));
+
+      openSpy.mockRestore();
+    });
+
+    it("falls back to postTitle only in Pinterest description when summaryContent is not provided", () => {
+      const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+      const imgUrl = "https://example.com/photo.jpg";
+
+      render(<SocialShare {...defaultProps} imgUrls={[imgUrl]} />);
+      fireEvent.click(screen.getByLabelText("Share on Pinterest"));
+
+      const calledUrl = openSpy.mock.calls[0][0] as string;
+      expect(calledUrl).toContain("description=");
+      expect(calledUrl).toContain(encodeURIComponent("Test Title"));
+      // No dash-separator or extra content beyond the title
+      expect(calledUrl).not.toContain(encodeURIComponent(" - "));
 
       openSpy.mockRestore();
     });
@@ -284,7 +328,14 @@ describe("SocialShare", () => {
       render(
         <SocialShare
           {...defaultProps}
-          platformsConfig={{ x: true, facebook: true, pinterest: true, linkedIn: true, email: true, nativeTools: true }}
+          platformsConfig={{
+            x: true,
+            facebook: true,
+            pinterest: true,
+            linkedIn: true,
+            email: true,
+            nativeTools: true,
+          }}
         />,
       );
 
@@ -295,7 +346,14 @@ describe("SocialShare", () => {
       render(
         <SocialShare
           {...defaultProps}
-          platformsConfig={{ x: false, facebook: true, pinterest: true, linkedIn: true, email: false, nativeTools: true }}
+          platformsConfig={{
+            x: false,
+            facebook: true,
+            pinterest: true,
+            linkedIn: true,
+            email: false,
+            nativeTools: true,
+          }}
         />,
       );
 
@@ -308,15 +366,30 @@ describe("SocialShare", () => {
       render(
         <SocialShare
           {...defaultProps}
-          platformsConfig={{ x: false, facebook: false, pinterest: false, linkedIn: false, email: false, nativeTools: false }}
+          platformsConfig={{
+            x: false,
+            facebook: false,
+            pinterest: false,
+            linkedIn: false,
+            email: false,
+            nativeTools: false,
+          }}
         />,
       );
 
       expect(screen.queryByLabelText("Share on X")).not.toBeInTheDocument();
-      expect(screen.queryByLabelText("Share on Facebook")).not.toBeInTheDocument();
-      expect(screen.queryByLabelText("Share on LinkedIn")).not.toBeInTheDocument();
-      expect(screen.queryByLabelText("Share via Email")).not.toBeInTheDocument();
-      expect(screen.queryByLabelText("Share on Pinterest")).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Share on Facebook"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Share on LinkedIn"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Share via Email"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Share on Pinterest"),
+      ).not.toBeInTheDocument();
     });
   });
 
