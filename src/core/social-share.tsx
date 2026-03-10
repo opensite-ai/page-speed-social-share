@@ -303,7 +303,7 @@ const StickyShareBar: React.FC<{
 
   const shareBarContent = (
     <div
-      className={`fixed top-0 flex w-fit h-full items-center justify-end pointer-events-none z-40 transition-all duration-300 ease-in-out opacity-100 visible w-screen pr-5 md:pr-8 ${
+      className={`fixed top-0 flex w-fit h-full items-center justify-end pointer-events-none z-40 transition-all duration-300 ease-in-out w-screen pr-5 md:pr-8 ${
         isActive
           ? "opacity-100 visible translate-x-0"
           : "opacity-0 invisible translate-x-4"
