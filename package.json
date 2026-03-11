@@ -1,6 +1,6 @@
 {
   "name": "@page-speed/social-share",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Performance-optimized social sharing component with inline, sticky, and combo variants for React applications.",
   "keywords": [
     "react",
@@ -23,7 +23,7 @@
     "url": "https://github.com/opensite-ai/page-speed-social-share/issues"
   },
   "author": "OpenSite AI (https://opensite.ai)",
-  "license": "MIT",
+  "license": "BSD-3-Clause",
   "private": false,
   "type": "module",
   "main": "./dist/index.cjs",
@@ -94,5 +94,8 @@
   "engines": {
     "node": ">=18.0.0",
     "pnpm": ">=9.0.0"
+  },
+  "dependencies": {
+    "@page-speed/router": "^1.0.0"
   }
 }

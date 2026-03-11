@@ -7,6 +7,11 @@ export default defineConfig({
     pool: "forks",
     fileParallelism: false,
     setupFiles: ["./tests/setup.ts"],
+    server: {
+      deps: {
+        inline: ["@page-speed/router"]
+      }
+    },
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],

@@ -1,6 +1,14 @@
 # @page-speed/social-share
 
-Performance-optimized social sharing component for React applications. Supports inline buttons, a scroll-aware sticky sidebar, or both combined -- with automatic native Web Share API integration on supported devices.
+## Performance-optimized social sharing component for React applications. Supports inline buttons, a scroll-aware sticky sidebar, or both combined with automatic native Web Share API integration on supported devices. Utilized extensively throughout the [OpenSite Site Builder Platform](https://opensite.ai).
+
+![Opensite Social Sharing React Component](https://octane.cdn.ing/api/v1/images/transform?url=https://cdn.ing/assets/i/r/293697/ccqkdzxovvd32va8ikaz8i9lnxv6/social-share-banner.png&f=webp)
+
+<br />
+
+[![npm version](https://img.shields.io/npm/v/@page-speed/social-share?style=for-the-badge)](https://www.npmjs.com/package/@page-speed/social-share)
+[![npm downloads](https://img.shields.io/npm/dm/@page-speed/social-share?style=for-the-badge)](https://www.npmjs.com/package/@page-speed/social-share)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue?style=for-the-badge)](./tsconfig.json)
 
 ## Installation
 
@@ -13,7 +21,7 @@ npm install @page-speed/social-share
 ### Peer dependencies
 
 | Package | Version |
-|---|---|
+| --- | --- |
 | `react` | `>=18.0.0` |
 | `react-dom` | `>=18.0.0` |
 | `@opensite/hooks` | `>=2.0.0` |
@@ -52,7 +60,7 @@ import type { SocialShareProps } from "@page-speed/social-share/types";
 ```
 
 | Entry point | Contents |
-|---|---|
+| --- | --- |
 | `.` | `SocialShare`, `useMobileShare`, all types |
 | `./core` | `SocialShare` component + re-exported `SocialShareProps` type |
 | `./hooks` | `useMobileShare` hook |
@@ -65,7 +73,7 @@ The primary export. Renders social share buttons for X (Twitter), Facebook, Pint
 ### Props (`SocialShareProps`)
 
 | Prop | Type | Default | Required | Description |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `postTitle` | `string` | -- | Yes | Title text used in share intents (tweet text, email subject, Pinterest description). |
 | `shareUrl` | `string` | -- | Yes | The canonical URL to share. |
 | `summaryContent` | `string` | -- | Yes | Short summary included in the email body. |
@@ -122,7 +130,7 @@ Renders both the standard inline buttons **and** the sticky sidebar simultaneous
 The component automatically adapts to the device:
 
 | Context | Behavior |
-|---|---|
+| --- | --- |
 | **Mobile/tablet + touch + Web Share API** | Shows a single native share button (opens the OS share sheet). |
 | **Desktop + Web Share API** | Shows all social buttons **plus** a native share button at the end. |
 | **Desktop without Web Share API** | Shows social buttons only (X, Facebook, Pinterest, LinkedIn, Email). |
@@ -134,7 +142,7 @@ Low-level hook that wraps the [Web Share API](https://developer.mozilla.org/en-U
 ### Parameters (`ShareParams`)
 
 | Param | Type | Default | Description |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `title` | `string` | -- | Share title (required). |
 | `url` | `string` | `undefined` | URL to share. |
 | `imageUrls` | `string[]` | `undefined` | Image URLs to fetch, convert to base64, and attach as files. |
@@ -144,7 +152,7 @@ Low-level hook that wraps the [Web Share API](https://developer.mozilla.org/en-U
 ### Return value (`ShareResult`)
 
 | Field | Type | Description |
-|---|---|---|
+| --- | --- | --- |
 | `share` | `() => Promise<void>` | Trigger the native share dialog. Gracefully falls back to sharing without files if file sharing is unsupported. |
 | `canShare` | `boolean` | `true` when `navigator.share` is available on the current device. |
 | `error` | `string \| null` | Error message from the last failed share attempt, or `null`. |
@@ -177,7 +185,7 @@ function CustomShareButton() {
 ### Social share URL endpoints
 
 | Platform | Endpoint | Parameters |
-|---|---|---|
+| --- | --- | --- |
 | **X (Twitter)** | `https://twitter.com/intent/tweet` | `text`, `url`, `hashtags` |
 | **Facebook** | `https://www.facebook.com/sharer.php` | `u` (URL only) |
 | **Pinterest** | `https://pinterest.com/pin/create/button` | `url`, `media`, `description` |
@@ -187,7 +195,7 @@ function CustomShareButton() {
 ### Web Share API browser compatibility
 
 | Browser | Support |
-|---|---|
+| --- | --- |
 | Chrome 128+ | Full |
 | Edge 104+ | Full |
 | Safari 12.1+ (macOS), 12.2+ (iOS) | Full |
@@ -205,7 +213,7 @@ The component uses [Tailwind CSS 4](https://tailwindcss.com/) with semantic desi
 ### Design tokens used
 
 | Token | Usage |
-|---|---|
+| --- | --- |
 | `bg-card` | Sticky bar background |
 | `text-card-foreground` | Icon hover color |
 | `bg-muted` | Inline button background, sticky button hover pseudo-element |
@@ -219,7 +227,7 @@ To customize the appearance, override these CSS custom properties in your theme.
 ### Bundle size
 
 | Entry | Raw | Gzipped |
-|---|---|---|
+| --- | --- | --- |
 | `index.js` (ESM) | 26.39 KB | 6.02 KB |
 | `core/index.js` | 26.35 KB | 6.01 KB |
 | `hooks/index.js` | 4.49 KB | 1.48 KB |
@@ -248,7 +256,7 @@ Set `disableImageAttachments={true}` to skip all image processing when images ar
 
 ## Architecture
 
-```
+```bash
 src/
   index.ts              Main barrel export
   core/
@@ -276,4 +284,4 @@ pnpm test           # Run tests with Vitest
 
 ## License
 
-MIT
+BSD-3-Clause

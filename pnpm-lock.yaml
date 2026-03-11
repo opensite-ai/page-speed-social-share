@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@page-speed/router':
+        specifier: ^1.0.0
+        version: 1.0.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       react:
         specifier: '>=18.0.0'
         version: 19.2.4
@@ -309,6 +312,13 @@ packages:
 
   '@opensite/hooks@2.1.0':
     resolution: {integrity: sha512-ATjSyaUVFAgaudNZXv2tVjjRIl4DAZUzLS4f4aqQA92V4WMMimNLgIfgzPF1/7BEMiEyMqd7vmUmnkXK+DGzdw==}
+    engines: {node: '>=18.0.0', pnpm: '>=9.0.0'}
+    peerDependencies:
+      react: '>=17.0.0'
+      react-dom: '>=17.0.0'
+
+  '@page-speed/router@1.0.0':
+    resolution: {integrity: sha512-JO7W42vKhetNgx6xvYsQiB3N+0R8KeSbKo9TxTc+c60RiZbZZXrUqkFcaMeBfid/ZkARfPu0p39Nl5WfwkYCSg==}
     engines: {node: '>=18.0.0', pnpm: '>=9.0.0'}
     peerDependencies:
       react: '>=17.0.0'
@@ -1272,6 +1282,11 @@ snapshots:
       '@jridgewell/sourcemap-codec': 1.5.5
 
   '@opensite/hooks@2.1.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+    dependencies:
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+
+  '@page-speed/router@1.0.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)

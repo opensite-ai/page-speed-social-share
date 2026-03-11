@@ -5,6 +5,7 @@ import ReactDOM from "react-dom";
 import useMobileShare from "../hooks/useMobileShare";
 import { useIsTouchDevice } from "@opensite/hooks/useIsTouchDevice";
 import { useScreen } from "@opensite/hooks/useScreen";
+import { useUrl } from "@page-speed/router";
 import type { SocialShareProps } from "../types";
 
 const X_SHARE_URL = "https://twitter.com/intent/tweet";
@@ -343,7 +344,7 @@ const StickyShareBar: React.FC<{
 export const SocialShare: React.FC<SocialShareProps> = ({
   containerClassName = "",
   summaryContent = "",
-  shareUrl,
+  shareUrl: providedShareUrl,
   postTitle,
   imgUrls,
   hashtags = [],
@@ -353,6 +354,9 @@ export const SocialShare: React.FC<SocialShareProps> = ({
   scrollContainerSelector,
   platformsConfig,
 }) => {
+  // Use current URL as fallback if shareUrl not provided
+  const currentUrl = useUrl();
+  const shareUrl = providedShareUrl || currentUrl.href || "";
   // Merge caller-supplied flags with defaults (all true except email)
   const platforms = {
     x: true,
