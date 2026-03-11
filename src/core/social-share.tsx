@@ -81,15 +81,21 @@ const StickyShareBar: React.FC<{
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(
     null,
   );
+  const componentRef = React.useRef<HTMLDivElement>(null);
 
   // Create a portal container when component mounts
   useEffect(() => {
-    let container = document.getElementById("sticky-share-portal");
+    // Detect the appropriate document context (iframe or parent)
+    // Use the componentRef's ownerDocument to ensure we create the portal
+    // in the correct document (iframe's document when in iframe, parent document otherwise)
+    const targetDocument = componentRef.current?.ownerDocument || document;
+
+    let container = targetDocument.getElementById("sticky-share-portal");
 
     if (!container) {
-      container = document.createElement("div");
+      container = targetDocument.createElement("div");
       container.id = "sticky-share-portal";
-      document.body.appendChild(container);
+      targetDocument.body.appendChild(container);
     }
 
     setPortalContainer(container);
@@ -98,7 +104,7 @@ const StickyShareBar: React.FC<{
       if (
         container &&
         container.parentNode &&
-        !document.getElementById("sticky-share-portal-persistent")
+        !targetDocument.getElementById("sticky-share-portal-persistent")
       ) {
         container.parentNode.removeChild(container);
       }
@@ -115,20 +121,23 @@ const StickyShareBar: React.FC<{
       return;
     }
 
+    // Get the correct document context (iframe or parent)
+    const targetDocument = componentRef.current?.ownerDocument || document;
+
     // Locate an app-specific scroll container (if any).
     // When the page uses a fixed <main> with overflow-auto, window.scrollY
     // stays at 0 and we must read scrollTop from that element instead.
     const findScrollContainer = (): HTMLElement | null => {
       // 1. Consumer-supplied selector takes priority
       if (scrollContainerSelector) {
-        const custom = document.querySelector(
+        const custom = targetDocument.querySelector(
           scrollContainerSelector,
         ) as HTMLElement | null;
         if (custom) return custom;
       }
 
       // 2. Common platform selectors
-      const el = document.querySelector(
+      const el = targetDocument.querySelector(
         "main.dashtrack-light, main.dashtrack-dark, main#os__root",
       ) as HTMLElement | null;
 
@@ -155,7 +164,7 @@ const StickyShareBar: React.FC<{
     handleScroll();
 
     // Optional: hide when footer comes into view
-    const footer = document.querySelector("footer, .footer");
+    const footer = targetDocument.querySelector("footer, .footer");
     let footerObserver: IntersectionObserver | null = null;
     if (footer) {
       footerObserver = new IntersectionObserver(
@@ -317,9 +326,15 @@ const StickyShareBar: React.FC<{
     </div>
   );
 
-  return portalContainer
-    ? ReactDOM.createPortal(shareBarContent, portalContainer)
-    : null;
+  return (
+    <>
+      {/* Hidden marker element to detect document context (iframe vs parent) */}
+      <div ref={componentRef} style={{ display: "none" }} aria-hidden="true" />
+      {portalContainer
+        ? ReactDOM.createPortal(shareBarContent, portalContainer)
+        : null}
+    </>
+  );
 };
 
 /********************************************************************
