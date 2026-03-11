@@ -1,7 +1,7 @@
 export type SocialShareProps = {
   containerClassName?: string;
   summaryContent?: string;
-  shareUrl: string;
+  shareUrl?: string;
   postTitle: string;
   imgUrls?: string[];
   hashtags?: string[];

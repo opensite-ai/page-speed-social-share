@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useState, useEffect } from "react";
+import React, { useMemo, useCallback, useState, useEffect } from "react";
 import ReactDOM from "react-dom";
 import useMobileShare from "../hooks/useMobileShare";
 import { useIsTouchDevice } from "@opensite/hooks/useIsTouchDevice";
@@ -338,6 +338,13 @@ const StickyShareBar: React.FC<{
   );
 };
 
+const ensureContentString = (val?: string | React.ReactNode) => {
+  if (val && typeof val === "string") {
+    return val;
+  }
+  return "";
+};
+
 /********************************************************************
  * SocialShare - main component
  ********************************************************************/
@@ -350,10 +357,13 @@ export const SocialShare: React.FC<SocialShareProps> = ({
   hashtags = [],
   variant = "standard",
   inlineSize = 42,
-  disableImageAttachments = false,
+  disableImageAttachments = true,
   scrollContainerSelector,
   platformsConfig,
 }) => {
+  const shareableTitle = ensureContentString(postTitle);
+  const shareableSummary = ensureContentString(summaryContent);
+
   // Use current URL as fallback if shareUrl not provided
   const currentUrl = useUrl();
   const shareUrl = providedShareUrl || currentUrl.href || "";
@@ -367,69 +377,47 @@ export const SocialShare: React.FC<SocialShareProps> = ({
     nativeTools: true,
     ...platformsConfig,
   };
-  log("SocialShare", "Component rendering", {
-    variant,
-    postTitle,
-    shareUrl,
-    summaryContent: summaryContent.substring(0, 50) + "...",
-    imgUrls: imgUrls?.length ?? 0,
-    hashtags,
-    disableImageAttachments,
-  });
 
   const { screenType } = useScreen();
   const { isTouchDevice: isTouch } = useIsTouchDevice();
-  const isMobileOrTablet = screenType === "MOBILE" || screenType === "TABLET";
 
-  // Pass summaryContent separately – the hook will compose the full text
-  // by combining title + summaryContent + url (avoids duplicate postTitle).
-  log("SocialShare", "Built share text", {
-    summaryContent: summaryContent.substring(0, 100) + "...",
-  });
+  const isMobileOrTablet = useMemo(() => {
+    return screenType === "MOBILE" || screenType === "TABLET";
+  }, [screenType]);
 
   // Setup native share capabilities
   const { share: originalNativeShare, canShare } = useMobileShare({
-    title: postTitle,
-    text: summaryContent || "",
+    title: shareableTitle,
+    text: shareableSummary || "",
     url: shareUrl,
     imageUrls: imgUrls,
     attachImages: !disableImageAttachments,
   });
 
   // Determine what to render based on device and capabilities
-  const showOnlyNativeButton =
-    isTouch && isMobileOrTablet && canShare && platforms.nativeTools;
+  const showOnlyNativeButton = useMemo(() => {
+    return isTouch && isMobileOrTablet && canShare && platforms.nativeTools
+      ? true
+      : false;
+  }, [isTouch, isMobileOrTablet, canShare, platforms.nativeTools]);
 
   const handleNativeShare = useCallback(() => {
-    log("handleNativeShare", "Native share triggered", { canShare });
-
     if (!canShare) {
-      log("handleNativeShare", "Cannot share - canShare is false");
       return;
     }
 
     try {
-      log("handleNativeShare", "Calling originalNativeShare()");
       originalNativeShare();
     } catch (error) {
-      log("handleNativeShare", "Native share error", { error: String(error) });
       console.error("Error sharing content:", error);
     }
   }, [canShare, originalNativeShare]);
 
   const getSocialUrl = useCallback(
     (social: string) => {
-      log("getSocialUrl", `Building URL for ${social}`, {
-        postTitle,
-        shareUrl,
-        summaryContent: summaryContent.substring(0, 50) + "...",
-        hashtags,
-        hasImages: !!(imgUrls && imgUrls.length > 0),
-      });
-
       switch (social) {
         case "x": {
-          let url = `${X_SHARE_URL}?text=${encodeURIComponent(postTitle)}`;
+          let url = `${X_SHARE_URL}?text=${encodeURIComponent(shareableTitle)}`;
           if (shareUrl) {
             url += `&url=${encodeURIComponent(shareUrl)}`;
           }
@@ -449,30 +437,25 @@ export const SocialShare: React.FC<SocialShareProps> = ({
           // Facebook sharer supports 'quote' for pre-fill text and 'hashtag' for a single hashtag
           // Note: The link preview (title, description, image) always comes from OG tags on the shared URL
           let url = `${FACEBOOK_SHARE_URL}?u=${encodeURIComponent(shareUrl)}`;
-          if (summaryContent || postTitle) {
-            const quote = summaryContent
-              ? `${postTitle}: ${summaryContent}`
-              : postTitle;
-            url += `&quote=${encodeURIComponent(quote)}`;
-          }
+          const quote = shareableSummary
+            ? `${shareableTitle}: ${shareableSummary}`
+            : shareableTitle;
+          url += `&quote=${encodeURIComponent(quote)}`;
           if (hashtags.length > 0) {
             // Facebook only supports a single hashtag, prefixed with #
             url += `&hashtag=${encodeURIComponent("#" + hashtags[0].replace(/\s+/g, ""))}`;
           }
-          log("getSocialUrl", "Facebook URL built", {
-            url: url.substring(0, 150) + "...",
-          });
           return url;
         }
 
         case "linkedin": {
           // LinkedIn's shareArticle endpoint supports title and summary params
           let url = `${LINKEDIN_SHARE_URL}?mini=true&url=${encodeURIComponent(shareUrl)}`;
-          if (postTitle) {
-            url += `&title=${encodeURIComponent(postTitle)}`;
+          if (shareableTitle) {
+            url += `&title=${encodeURIComponent(shareableTitle)}`;
           }
-          if (summaryContent) {
-            url += `&summary=${encodeURIComponent(summaryContent)}`;
+          if (shareableSummary) {
+            url += `&summary=${encodeURIComponent(shareableSummary)}`;
           }
           log("getSocialUrl", "LinkedIn URL built", {
             url: url.substring(0, 150) + "...",
@@ -486,27 +469,25 @@ export const SocialShare: React.FC<SocialShareProps> = ({
             url += `&media=${encodeURIComponent(imgUrls[0])}`;
           }
           // Pinterest supports a description parameter
-          const desc = summaryContent
-            ? `${postTitle} - ${summaryContent}`
-            : postTitle;
+          const desc = shareableSummary
+            ? `${shareableTitle} - ${shareableSummary}`
+            : shareableTitle;
           url += `&description=${encodeURIComponent(desc)}`;
-          log("getSocialUrl", "Pinterest URL built", {
-            url: url.substring(0, 150) + "...",
-          });
+
           return url;
         }
 
         case "mail": {
-          const subject = encodeURIComponent(postTitle);
+          const subject = encodeURIComponent(shareableTitle);
           // Build body with title, summary, URL, and image links
           let bodyContent = "";
-          if (postTitle) {
-            bodyContent = postTitle;
+          if (shareableTitle) {
+            bodyContent = shareableTitle;
           }
-          if (summaryContent) {
+          if (shareableSummary) {
             bodyContent += bodyContent
-              ? `\n\n${summaryContent}`
-              : summaryContent;
+              ? `\n\n${shareableSummary}`
+              : shareableSummary;
           }
           if (shareUrl) {
             bodyContent += bodyContent ? `\n\n${shareUrl}` : shareUrl;
@@ -530,17 +511,15 @@ export const SocialShare: React.FC<SocialShareProps> = ({
           return "#";
       }
     },
-    [postTitle, summaryContent, shareUrl, imgUrls, hashtags],
+    [shareableTitle, shareableSummary, shareUrl, imgUrls, hashtags],
   );
 
   const handleSocialShare = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>, social: string) => {
       event.preventDefault();
-      log("handleSocialShare", `Handling share for ${social}`);
 
       const url = getSocialUrl(social);
       if (url === "#") {
-        log("handleSocialShare", `Invalid URL for ${social}, aborting`);
         return;
       }
 
