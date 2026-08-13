@@ -1,6 +1,6 @@
 {
   "name": "@page-speed/social-share",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Performance-optimized social sharing component with inline, sticky, and combo variants for React applications.",
   "keywords": [
     "react",
@@ -77,7 +77,7 @@
     "react-dom": ">=18.0.0"
   },
   "devDependencies": {
-    "@opensite/hooks": "^2.1.0",
+    "@opensite/hooks": "2.1.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
@@ -96,6 +96,6 @@
     "pnpm": ">=9.0.0"
   },
   "dependencies": {
-    "@page-speed/router": "^1.0.0"
+    "@page-speed/router": "1.2.2"
   }
 }

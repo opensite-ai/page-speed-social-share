@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@page-speed/router':
-        specifier: ^1.0.0
-        version: 1.0.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        specifier: 1.2.2
+        version: 1.2.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       react:
         specifier: '>=18.0.0'
         version: 19.2.4
@@ -19,7 +19,7 @@ importers:
         version: 19.2.4(react@19.2.4)
     devDependencies:
       '@opensite/hooks':
-        specifier: ^2.1.0
+        specifier: 2.1.0
         version: 2.1.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@testing-library/dom':
         specifier: ^10.4.1
@@ -317,8 +317,8 @@ packages:
       react: '>=17.0.0'
       react-dom: '>=17.0.0'
 
-  '@page-speed/router@1.0.0':
-    resolution: {integrity: sha512-JO7W42vKhetNgx6xvYsQiB3N+0R8KeSbKo9TxTc+c60RiZbZZXrUqkFcaMeBfid/ZkARfPu0p39Nl5WfwkYCSg==}
+  '@page-speed/router@1.2.2':
+    resolution: {integrity: sha512-8refyE8oH+q3w+MkVUCybgYIIhPS02z0bCDZY2cWRTb4fCl+HuP/8RH2GY5Lr0QICCP7zOyGM8S7OJWR/Grscw==}
     engines: {node: '>=18.0.0', pnpm: '>=9.0.0'}
     peerDependencies:
       react: '>=17.0.0'
@@ -1286,7 +1286,7 @@ snapshots:
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
 
-  '@page-speed/router@1.0.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+  '@page-speed/router@1.2.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
